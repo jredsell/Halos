@@ -105,7 +105,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
               setTimeout(() => {
                  sendVimeoCommand('setVolume', 1);
                  sendVimeoCommand('play');
-              }, 100);
+                 // If stuck at 0, a tiny seek can sometimes kickstart playback
+                 if (followerTimeRef.current === 0) {
+                    sendVimeoCommand('setCurrentTime', 0.1);
+                 }
+              }, 200);
           }
        }
        if (videoRef.current && isMaster) {
@@ -157,6 +161,10 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                     sendVimeoCommand('addEventListener', 'pause');
                     sendVimeoCommand('addEventListener', 'finish');
                     sendVimeoCommand('addEventListener', 'timeupdate');
+                    // If we're already supposed to be playing, send play command now that we're ready
+                    if (!followerPausedRef.current) {
+                        sendVimeoCommand('play');
+                    }
                  }
 
                  if (eventName === 'timeupdate' && data.data) {
