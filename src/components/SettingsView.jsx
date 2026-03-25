@@ -1,9 +1,10 @@
 import { Share2, Smartphone, Monitor, ChevronRight, Info, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
 
-export default function SettingsView() {
+export default function SettingsView({ roomId }) {
   const [copied, setCopied] = useState(false);
-  const liveUrl = "https://jredsell.github.io/Halos/?network=true";
+  const base = window.location.origin + window.location.pathname;
+  const liveUrl = `${base}${base.endsWith('/') ? '' : '/'}?network=true${roomId ? `&room=${roomId}` : ''}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(liveUrl)}`;
 
   const handleCopy = () => {

@@ -26,6 +26,7 @@ function App() {
   // Routing State
   const [isProjectorView, setIsProjectorView] = useState(false);
   const [isNetworkView, setIsNetworkView] = useState(false);
+  const [roomId, setRoomId] = useState(null);
   const [networkPayload, setNetworkPayload] = useState(null);
   
   // App Global Data State
@@ -61,10 +62,22 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('projector')) setIsProjectorView(true);
     if (params.get('network')) setIsNetworkView(true);
+    const roomFromUrl = params.get('room');
 
     const init = async () => {
       try {
-        const { get } = await import('idb-keyval');
+        const { get, set } = await import('idb-keyval');
+        
+        // Handle Room ID
+        let currentRoom = roomFromUrl;
+        if (!isNetworkView) {
+           currentRoom = await get('halos_room_id');
+           if (!currentRoom) {
+              currentRoom = Math.random().toString(36).substring(2, 8).toUpperCase();
+              await set('halos_room_id', currentRoom);
+           }
+        }
+        setRoomId(currentRoom);
         
         // 1. Initial Load from DB (Fast, no permissions)
         const savedService = await get('halos_service_items');
@@ -157,7 +170,7 @@ function App() {
         try {
           const res = await fetch(targetUrl);
           const blob = await res.blob();
-          await fetch('/api/media', { 
+          await fetch(`/api/media?room=${roomId}`, { 
             method: 'POST', 
             headers: { 'Content-Type': blob.type },
             body: blob 
@@ -235,16 +248,17 @@ function App() {
       const networkPayload = { ...payload };
       if (networkPayload.logoUrl?.startsWith('blob:')) {
          if (payload.logoUrl !== syncedMediaUrl) networkPayload.logoUrl = null;
-         else networkPayload.logoUrl = `/api/media?v=${payload.logoUrl.slice(-12)}`;
+         else networkPayload.logoUrl = `/api/media?room=${roomId}&v=${payload.logoUrl.slice(-12)}`;
       }
       if (networkPayload.activeMediaUrl?.startsWith('blob:')) {
          if (payload.activeMediaUrl !== syncedMediaUrl) networkPayload.activeMediaUrl = null;
-         else networkPayload.activeMediaUrl = `/api/media?v=${payload.activeMediaUrl.slice(-12)}`;
+         else networkPayload.activeMediaUrl = `/api/media?room=${roomId}&v=${payload.activeMediaUrl.slice(-12)}`;
       }
       
       networkPayload.isNetworkViewer = true; // Mark specifically for phone viewers
+      if (!roomId) return;
 
-      fetch('/api/live', {
+      fetch(`/api/live?room=${roomId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(networkPayload)
@@ -293,7 +307,8 @@ function App() {
     
     const fetchLive = async () => {
       try {
-        const res = await fetch('/api/live');
+        if (!roomId) return;
+        const res = await fetch(`/api/live?room=${roomId}`);
         if (res.ok) {
            const data = await res.json();
            setNetworkPayload(data);
@@ -674,6 +689,7 @@ function App() {
                  onSaveService={handleSaveService}
                  onLoadService={handleLoadService}
                  onClearService={handleClearService}
+                 roomId={roomId}
                  liveItemId={liveItem?.id}
                  playedItems={playedItems}
                  onResetPlayed={() => setPlayedItems(new Set())}
@@ -792,6 +808,7 @@ function App() {
                  presentationPaused={presentationPaused}
                  setPresentationPaused={setPresentationPaused}
                  isSyncingMedia={isSyncingMedia}
+                 roomId={roomId}
               />
             </div>
           </main>

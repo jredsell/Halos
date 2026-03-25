@@ -2,17 +2,18 @@ import { defineConfig } from 'vite' // Halos V2 Deployment
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// Simple in-memory broadcast hub for local network sync
+// Simple in-memory broadcast hub with Room ID sharding
 const halosBroadcastPlugin = () => {
-  let currentLiveState = null;
-  let currentMedia = null;
-  let currentMediaType = 'image/png';
+  const roomStates = new Map(); // roomId -> currentLiveState
+  const roomMedia = new Map();  // roomId -> { data: Buffer, type: string }
   
   return {
     name: 'halos-broadcast',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        const url = req.url.split('?')[0];
+        const urlObj = new URL(req.url, `http://${req.headers.host}`);
+        const url = urlObj.pathname;
+        const roomId = urlObj.searchParams.get('room') || 'default';
         
         // State Endpoint
         if (url === '/api/live') {
@@ -21,9 +22,9 @@ const halosBroadcastPlugin = () => {
             req.on('data', chunk => body += chunk);
             req.on('end', () => {
               try {
-                currentLiveState = JSON.parse(body);
+                roomStates.set(roomId, JSON.parse(body));
                 res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ success: true }));
+                res.end(JSON.stringify({ success: true, room: roomId }));
               } catch (e) {
                 res.statusCode = 400;
                 res.end(JSON.stringify({ error: 'Invalid JSON' }));
@@ -32,7 +33,7 @@ const halosBroadcastPlugin = () => {
             return;
           } else if (req.method === 'GET') {
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(currentLiveState || {}));
+            res.end(JSON.stringify(roomStates.get(roomId) || {}));
             return;
           }
         }
@@ -43,13 +44,16 @@ const halosBroadcastPlugin = () => {
              const chunks = [];
              req.on('data', chunk => chunks.push(chunk));
              req.on('end', () => {
-               currentMedia = Buffer.concat(chunks);
-               currentMediaType = req.headers['content-type'] || 'image/png';
-               res.end(JSON.stringify({ success: true }));
+               roomMedia.set(roomId, {
+                  data: Buffer.concat(chunks),
+                  type: req.headers['content-type'] || 'image/png'
+               });
+               res.end(JSON.stringify({ success: true, room: roomId }));
              });
              return;
            } else if (req.method === 'GET') {
-             if (currentMedia) {
+             const media = roomMedia.get(roomId);
+             if (media) {
                const range = req.headers.range;
                if (range) {
                  const parts = range.replace(/bytes=/, "").split("-");
@@ -57,22 +61,22 @@ const halosBroadcastPlugin = () => {
                  const partialend = parts[1];
                  
                  const start = parseInt(partialstart, 10);
-                 const end = partialend ? parseInt(partialend, 10) : currentMedia.length - 1;
+                 const end = partialend ? parseInt(partialend, 10) : media.data.length - 1;
                  const chunksize = (end - start) + 1;
                  
                  res.writeHead(206, {
-                   'Content-Range': `bytes ${start}-${end}/${currentMedia.length}`,
+                   'Content-Range': `bytes ${start}-${end}/${media.data.length}`,
                    'Accept-Ranges': 'bytes',
                    'Content-Length': chunksize,
-                   'Content-Type': currentMediaType,
+                   'Content-Type': media.type,
                  });
-                 res.end(currentMedia.slice(start, end + 1));
+                 res.end(media.data.slice(start, end + 1));
                } else {
                  res.writeHead(200, {
-                   'Content-Length': currentMedia.length,
-                   'Content-Type': currentMediaType,
+                   'Content-Length': media.data.length,
+                   'Content-Type': media.type,
                  });
-                 res.end(currentMedia);
+                 res.end(media.data);
                }
              } else {
                res.statusCode = 404;

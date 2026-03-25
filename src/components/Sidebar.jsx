@@ -26,7 +26,8 @@ export default function Sidebar({
   liveItemId,
   playedItems,
   onResetPlayed,
-  onResetItemPlayed
+  onResetItemPlayed,
+  roomId
 }) {
   const [localQuery, setLocalQuery] = useState('');
   const [showAdded, setShowAdded] = useState(false);
@@ -433,7 +434,7 @@ export default function Sidebar({
 
   // 0. Settings View
   if (activeTab === 'Settings') {
-    return <SettingsView />;
+    return <SettingsView roomId={roomId} />;
   }
 
   // 1. Service View

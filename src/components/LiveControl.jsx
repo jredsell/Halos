@@ -12,7 +12,8 @@ export default function LiveControl({
     playbackStatus = { time: 0, duration: 0, paused: true, volume: 1 },
     presentationPaused = true,
     setPresentationPaused = () => {},
-    isSyncingMedia = false
+    isSyncingMedia = false,
+    roomId = null
 }) {
   const [playVolume, setPlayVolume] = useState(1);
   const [scrubTime, setScrubTime] = useState(0);
