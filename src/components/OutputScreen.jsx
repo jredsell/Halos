@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { Volume2, HelpCircle, Smartphone, Monitor, X, ChevronRight } from 'lucide-react';
+import { Volume2, HelpCircle, Monitor, ChevronRight } from 'lucide-react';
 import { getYoutubeEmbedUrl } from '../utils/media';
 
 // High-Impact Smart Scaler
@@ -44,7 +44,6 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     const videoRef = useRef(null);
     const iframeRef = useRef(null);
     const [hasInteracted, setHasInteracted] = useState(false);
-    const [showGuide, setShowGuide] = useState(false);
     const isMuted = !isMaster;
 
     // Tracking for Master & Followers
@@ -63,7 +62,10 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (payload.isYouTube) url = getYoutubeEmbedUrl(url);
        const urlObj = new URL(url);
        if (payload.isYouTube) urlObj.searchParams.set('enablejsapi', '1');
-       if (payload.isVimeo) urlObj.searchParams.set('api', '1');
+       if (payload.isVimeo) {
+          urlObj.searchParams.set('api', '1');
+          urlObj.searchParams.set('player_id', 'halos-vimeo');
+       }
        urlObj.searchParams.set('controls', '0');
        urlObj.searchParams.set('rel', '0');
        urlObj.searchParams.set('modestbranding', '1');
@@ -82,11 +84,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        iframeRef.current.contentWindow?.postMessage(msg, '*');
     };
 
-    const sendVimeoCommand = (method, value) => {
-       if (!iframeRef.current) return;
-       const msg = JSON.stringify({ method, value });
-       iframeRef.current.contentWindow?.postMessage(msg, '*');
-    };
+     const sendVimeoCommand = (method, value = "") => {
+        if (!iframeRef.current?.contentWindow) return;
+        const msg = JSON.stringify({ method, value });
+        iframeRef.current.contentWindow?.postMessage(msg, '*');
+     };
 
     const forceUnmute = () => {
        setHasInteracted(true);
@@ -231,6 +233,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           if (command === 'play') sendVimeoCommand('play');
           if (command === 'pause') sendVimeoCommand('pause');
           if (command === 'seek') sendVimeoCommand('setCurrentTime', value);
+          if (command === 'volume') sendVimeoCommand('setVolume', value);
        }
 
        if (videoRef.current) {
@@ -304,6 +307,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                     <div className={`w-full h-full relative transition-all duration-500 ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}>
                       <iframe 
                         ref={iframeRef} 
+                        id={payload.isVimeo ? "halos-vimeo" : undefined}
                         src={iframeSrc}
                         className="w-full h-full scale-[1.01] origin-center" 
                         style={{ clipPath: 'inset(1% 1% 1% 1%)' }}
@@ -369,84 +373,6 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
          
          {renderContent()}
 
-         {/* Network Guide Trigger */}
-         {isLiveBroadcast && !showGuide && (
-            <button 
-                onClick={(e) => { e.stopPropagation(); setShowGuide(true); }}
-                className="absolute bottom-6 right-6 z-[60] p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all hover:scale-110 active:scale-95 group"
-                title="How to save this app"
-            >
-                <HelpCircle size={24} />
-                <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-black/80 backdrop-blur px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">How to save Halos</span>
-            </button>
-         )}
-
-         {/* Network Guide Overlay */}
-         {isLiveBroadcast && showGuide && (
-            <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in duration-300">
-                <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-                    <button 
-                        onClick={() => setShowGuide(false)}
-                        className="absolute top-4 right-4 p-2 text-neutral-500 hover:text-white transition-colors"
-                    >
-                        <X size={20} />
-                    </button>
-
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-600/20">
-                            <Smartphone size={28} className="text-white" />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">Install Halos App</h2>
-                            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Follower Guide</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div className="flex gap-4 items-start group">
-                            <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-black text-blue-500 flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">1</div>
-                            <div className="flex-1">
-                                <div className="text-sm font-bold text-neutral-200 mb-1">Open Browser Menu</div>
-                                <div className="text-[11px] text-neutral-400 leading-relaxed">
-                                    On <span className="text-white">iPhone</span>, tap the <strong>Share</strong> button. On <span className="text-white">Android</span>, tap the <strong>three dots (⋮)</strong>.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 items-start group">
-                            <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-black text-blue-500 flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">2</div>
-                            <div className="flex-1">
-                                <div className="text-sm font-bold text-neutral-200 mb-1">Select "Install App"</div>
-                                <div className="text-[11px] text-neutral-400 leading-relaxed">
-                                    Look for <span className="text-white">"Add to Home Screen"</span> or <span className="text-white">"Install App"</span> in the menu options.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-4 items-start group">
-                            <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-xs font-black text-blue-500 flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">3</div>
-                            <div className="flex-1">
-                                <div className="text-sm font-bold text-neutral-200 mb-1">Run Like a Pro</div>
-                                <div className="text-[11px] text-neutral-400 leading-relaxed">
-                                    Halos will now appear on your home screen and run in <span className="text-white font-bold">Fullscreen Mode</span> for the best experience.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button 
-                        onClick={() => setShowGuide(false)}
-                        className="w-full mt-10 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] py-4 rounded-2xl shadow-xl transition-all active:scale-[0.98]"
-                    >
-                        Got it, thanks!
-                    </button>
-
-                    <div className="mt-6 text-center">
-                        <p className="text-[9px] text-neutral-600 font-bold uppercase tracking-widest">Powered by Halos Professional Engine</p>
-                    </div>
-                </div>
-            </div>
-         )}
       </div>
     );
 }
