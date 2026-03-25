@@ -86,8 +86,9 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
      const sendVimeoCommand = (method, value = "") => {
         if (!iframeRef.current?.contentWindow) return;
-        const msg = JSON.stringify({ method, value });
-        iframeRef.current.contentWindow?.postMessage(msg, '*');
+        const msg = { method, value };
+        // The modern Vimeo player accepts objects directly
+        iframeRef.current.contentWindow.postMessage(msg, '*');
      };
 
     const forceUnmute = () => {
@@ -100,8 +101,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                 sendIframeCommand('setVolume', [100]);
              }, 100);
           } else if (payload?.isVimeo) {
-             sendVimeoCommand('setVolume', 0);
-             setTimeout(() => sendVimeoCommand('setVolume', 1), 100);
+              sendVimeoCommand('setVolume', 0);
+              setTimeout(() => {
+                 sendVimeoCommand('setVolume', 1);
+                 sendVimeoCommand('play');
+              }, 100);
           }
        }
        if (videoRef.current && isMaster) {
@@ -222,7 +226,15 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        const { command, value } = remoteCommand;
        
        // AUTO-UNMUTE: If we get a play command on the dashboard, clear the interaction overlay
-       if (isMaster && command === 'play') forceUnmute();
+       if (isMaster && command === 'play') {
+           forceUnmute();
+           followerPausedRef.current = false;
+           statusHandlerRef.current?.({ paused: false, ts: Date.now() });
+       }
+       if (isMaster && command === 'pause') {
+           followerPausedRef.current = true;
+           statusHandlerRef.current?.({ paused: true, ts: Date.now() });
+       }
 
        if (payload?.isYouTube) {
           if (command === 'play') sendIframeCommand('playVideo');
