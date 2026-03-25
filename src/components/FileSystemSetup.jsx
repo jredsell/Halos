@@ -80,7 +80,7 @@ export default function FileSystemSetup({ onReady }) {
     <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center p-8">
       <div className="max-w-md w-full text-center space-y-8">
         <h1 className="text-5xl font-extrabold tracking-widest text-white">HALOS</h1>
-        <p className="text-neutral-400 text-lg">Simply Powerful Presentation</p>
+        <p className="text-neutral-400 text-lg">Simple Powerful Church Presentation Software</p>
         
         <div className="flex flex-col gap-4 mt-12 bg-neutral-900/50 p-6 rounded-2xl border border-neutral-800/50">
           <p className="text-sm text-neutral-400 mb-2">Step 1</p>
