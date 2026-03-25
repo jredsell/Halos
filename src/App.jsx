@@ -14,6 +14,7 @@ import { useFolderContents } from './hooks/useFolderContents'
 import { parseSongMarkdown } from './utils/songParser'
 import ConfirmModal from './components/ConfirmModal'
 import { verifyPermission, reResolveMedia, formatVerseRanges, getYoutubeEmbedUrl } from './utils/media'
+import OutputScreen from './components/OutputScreen'
 
 const TABS = ['Service', 'Songs', 'Bible', 'Videos', 'Images', 'Settings'];
 
@@ -21,6 +22,11 @@ function App() {
 
   const [libraryHandle, setLibraryHandle] = useState(null)
   const projectorWindowRef = useRef(null);
+  
+  // Routing State
+  const [isProjectorView, setIsProjectorView] = useState(false);
+  const [isNetworkView, setIsNetworkView] = useState(false);
+  const [networkPayload, setNetworkPayload] = useState(null);
   
   // App Global Data State
   const [activeTab, setActiveTab] = useState('Service');
@@ -52,6 +58,10 @@ function App() {
 
   // Handshake and Init
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('projector')) setIsProjectorView(true);
+    if (params.get('network')) setIsNetworkView(true);
+
     const init = async () => {
       try {
         const { get } = await import('idb-keyval');
@@ -277,6 +287,25 @@ function App() {
      return () => bc.close();
    }, [livePayload]);
 
+  // Network Listener (Followers)
+  useEffect(() => {
+    if (!isNetworkView) return;
+    
+    const fetchLive = async () => {
+      try {
+        const res = await fetch('/api/live');
+        if (res.ok) {
+           const data = await res.json();
+           setNetworkPayload(data);
+        }
+      } catch (e) {}
+    };
+
+    fetchLive();
+    const interval = setInterval(fetchLive, 2000);
+    return () => clearInterval(interval);
+  }, [isNetworkView]);
+
   const isInitialLoad = useRef(true);
 
   // Auto-Save Service Flow
@@ -397,6 +426,24 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedItem, activeSlideIndex]);
+
+  // ROUTING LAYER: PROJECTOR
+  if (isProjectorView) {
+    return (
+       <div className="w-screen h-screen bg-black overflow-hidden relative">
+          <OutputScreen payload={livePayload} isMaster={true} />
+       </div>
+    );
+  }
+
+  // ROUTING LAYER: NETWORK
+  if (isNetworkView) {
+    return (
+       <div className="w-screen h-screen bg-black overflow-hidden relative">
+          <OutputScreen payload={networkPayload} isLiveBroadcast={true} />
+       </div>
+    );
+  }
 
   if (!libraryHandle) {
     return <FileSystemSetup onReady={(handle) => setLibraryHandle(handle)} />
