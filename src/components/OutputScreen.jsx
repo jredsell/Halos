@@ -325,6 +325,17 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
             );
         }
 
+        // The "Restore Audio" overlay is ONLY needed for YouTube/Vimeo because those
+        // players are force-started muted (browser policy). Local videos can play with
+        // audio from the start via the video element's own `muted` prop.
+        // Also: only show when autoplay is enabled — if the video hasn't started yet
+        // because autoplay is off, we just want the video to sit naturally.
+        const needsAudioRestoreOverlay = isMaster
+            && !hasInteracted
+            && payload.mediaType === 'video'
+            && (payload.isYouTube || payload.isVimeo)
+            && payload.itemAutoPlay;
+
         return (
            <>
               {(payload.mediaType === 'image' || payload.mediaType === 'slide_deck') && payload.activeMediaUrl && (
@@ -383,7 +394,9 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
               {payload.activeSlide && payload.activeSlide.length > 0 && (
                  <AutoFitLyrics lines={payload.activeSlide} isMaster={isMaster} isLiveBroadcast={isLiveBroadcast} isClearText={payload.isClearText} />
               )}
-              {isMaster && !hasInteracted && payload.mediaType === 'video' && (
+              {/* Only show "Restore Audio" overlay for YouTube/Vimeo with autoplay ON.
+                  Local videos are not force-muted, and non-autoplay videos should just sit quietly. */}
+              {needsAudioRestoreOverlay && (
                  <div className="absolute inset-0 bg-blue-600/30 backdrop-blur-xl z-50 flex flex-col items-center justify-center text-white p-12 cursor-pointer">
                     <div className="bg-blue-600 p-8 rounded-full mb-6 animate-bounce shadow-2xl">
                        <Volume2 size={64} fill="currentColor" />

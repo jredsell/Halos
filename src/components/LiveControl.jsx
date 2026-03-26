@@ -17,6 +17,8 @@ export default function LiveControl({
 }) {
   const [playVolume, setPlayVolume] = useState(1);
   const [scrubTime, setScrubTime] = useState(0);
+  // Local status tracked directly from the projector's status updates (via BroadcastChannel in App)
+  // This ensures the controls respond immediately without extra roundtrips.
   
   const isDragging = useRef(false);
   const isDraggingVol = useRef(false);
@@ -26,9 +28,11 @@ export default function LiveControl({
   const lastStatusUpdateRef = useRef(0);
   const scrubTimeRef = useRef(0);
 
+  // Use playbackStatus from App (sourced from projector BroadcastChannel) as the truth
   const displayTime = isDragging.current ? scrubTime : (playbackStatus?.time || livePayload?.currentTime || 0);
   const displayDuration = playbackStatus?.duration || livePayload?.duration || 0;
-  const displayPaused = playbackStatus?.paused ?? presentationPaused;
+  // Prefer playbackStatus.paused from the projector; fall back to presentationPaused prop
+  const displayPaused = playbackStatus?.paused !== undefined ? playbackStatus.paused : presentationPaused;
   const displayVolume = isDraggingVol.current ? playVolume : (playbackStatus?.volume ?? playVolume);
 
   // Pixel-Perfect Parity: Scaler for the Virtual 16:9 Screen (1600x900)
@@ -66,11 +70,30 @@ export default function LiveControl({
 
   const lastCommandTimeRef = useRef(0);
 
-   const handleStatusUpdate = useCallback((status) => {
-      if (status && (status.time !== undefined || status.duration !== undefined)) {
-         notifyAppOfStatus(status);
-      }
-   }, [livePayload, displayPaused]);
+  const notifyAppOfStatus = (overrides) => {
+     const channel = new BroadcastChannel('halos-projector-hub');
+     channel.postMessage({ 
+        type: 'status', 
+        time: overrides.time !== undefined ? overrides.time : displayTime, 
+        paused: overrides.paused !== undefined ? overrides.paused : presentationPaused, 
+        duration: overrides.duration !== undefined ? overrides.duration : displayDuration,
+        ts: Date.now(),
+        slideshowInterval: overrides.slideshowInterval
+     });
+     channel.close();
+  };
+
+  // NOTE: The dashboard preview OutputScreen uses isMaster={false} so it does NOT
+  // report playback status here. Status flows: Projector popup -> BroadcastChannel
+  // -> App.jsx setPlaybackStatus -> passed as `playbackStatus` prop to this component.
+  // This callback is a no-op for the preview; kept for future use.
+  const handleStatusUpdate = useCallback((status) => {
+     // Preview is not master, so this won't fire for video events.
+     // It may fire for non-video status. Broadcast upward just in case.
+     if (status && (status.time !== undefined || status.duration !== undefined || status.paused !== undefined)) {
+        notifyAppOfStatus(status);
+     }
+  }, []);
 
   const handlePickLogo = async (e) => {
     e.stopPropagation();
@@ -98,21 +121,8 @@ export default function LiveControl({
      return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  const notifyAppOfStatus = (overrides) => {
-     const channel = new BroadcastChannel('halos-projector-hub');
-     channel.postMessage({ 
-        type: 'status', 
-        time: overrides.time !== undefined ? overrides.time : displayTime, 
-        paused: overrides.paused !== undefined ? overrides.paused : presentationPaused, 
-        duration: overrides.duration !== undefined ? overrides.duration : displayDuration,
-        ts: Date.now(),
-        slideshowInterval: overrides.slideshowInterval
-     });
-     channel.close();
-  };
-
   const handleTogglePlay = () => {
-      const nextPaused = !presentationPaused;
+      const nextPaused = !displayPaused;
       lastCommandTimeRef.current = Date.now();
       broadcastPlayback(nextPaused ? 'pause' : 'play');
       setPresentationPaused(nextPaused);
@@ -150,7 +160,7 @@ export default function LiveControl({
            >
               <OutputScreen 
                 payload={livePayload} 
-                isMaster={true}
+                isMaster={false}
                 onStatusUpdate={handleStatusUpdate} 
                 remoteCommand={remoteCommand}
                 isLiveBroadcast={true} /* Force High-Impact Scaling Mode */
@@ -217,7 +227,6 @@ export default function LiveControl({
                                </span>
                                <div className="flex items-center gap-2">
                                   {isSyncingMedia && <span className="text-blue-500 animate-pulse uppercase tracking-tighter">Syncing...</span>}
-                                  <span className="text-white/60">REMAINING</span>
                                   <span className="text-white font-black">-{formatTime(Math.max(0, displayDuration - displayTime))}</span>
                                </div>
                             </div>
