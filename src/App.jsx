@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ExternalLink } from 'lucide-react'
 import FileSystemSetup from './components/FileSystemSetup'
 import { getStoredDirectoryHandle } from './utils/fileSystem'
@@ -8,15 +8,17 @@ import LiveControl from './components/LiveControl'
 import DragDropZone from './components/DragDropZone'
 import ImageArrayViewer from './components/ImageArrayViewer'
 import SongEditor from './components/SongEditor'
+import LiturgyEditor from './components/LiturgyEditor'
 import { useFileSystemWatcher } from './hooks/useFileSystemWatcher'
 import { useSearchIndexer } from './hooks/useSearchIndexer'
 import { useFolderContents } from './hooks/useFolderContents'
 import { parseSongMarkdown } from './utils/songParser'
+import { parseLiturgyMarkdown } from './utils/liturgyParser'
 import ConfirmModal from './components/ConfirmModal'
 import { verifyPermission, reResolveMedia, formatVerseRanges, getYoutubeEmbedUrl } from './utils/media'
 import OutputScreen from './components/OutputScreen'
 
-const TABS = ['Service', 'Songs', 'Bible', 'Videos', 'Images', 'Settings'];
+const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Settings'];
 
 function App() {
 
@@ -211,6 +213,12 @@ function App() {
           const slides = liveItem.slides || [];
           if (slides[liveSlideIndex]) {
              payload.activeSlide = slides[liveSlideIndex].content;
+          }
+       } else if (liveItem.type === 'liturgy') {
+          const slides = liveItem.slides || [];
+          if (slides[liveSlideIndex]) {
+             payload.activeSlide = slides[liveSlideIndex].content;
+             payload.liturgyType = slides[liveSlideIndex].type; // 'speaker' | 'response'
           }
        } else if (liveItem.type === 'image' || liveItem.type === 'slide_deck') {
           const imgs = liveItem.images || [];
@@ -471,6 +479,35 @@ function App() {
        setActiveTab('new_song');
        return;
     }
+    if (item.type === 'new_liturgy') {
+       setSelectedItem(item);
+       setActiveTab('new_liturgy');
+       return;
+    }
+    if (item.type === 'liturgy') {
+       // Re-parse to ensure slides are fresh
+       let fresh = item;
+       if (item.rawText) {
+         const parsed = parseLiturgyMarkdown(item.rawText);
+         fresh = { ...item, slides: parsed.slides };
+       }
+       setSelectedItem(fresh);
+       // If selecting from Service tab, set live output but stay on Service view
+       if (activeTab === 'Service') {
+         setLiveItem(fresh);
+         setLiveSlideIndex(0);
+         setPlayedItems(prev => new Set(prev).add(fresh.id));
+       }
+       // Only switch to Liturgy tab if we're being called from the Liturgy sidebar
+       // (not from service — let the service stay focused)
+       if (activeTab === 'Liturgy') {
+         // show editor — tab is already Liturgy
+       }
+       setActiveSlideIndex(0);
+       setSelectedIndices(new Set());
+       setIsClearText(false);
+       return;
+    }
     
     let itemToView = { ...item };
     
@@ -702,7 +739,40 @@ function App() {
             </div>
             
             <div className="flex-1 p-8 bg-neutral-950/90 overflow-y-auto relative custom-scrollbar flex flex-col z-0">
-              {activeTab === 'new_song' ? (
+              {(activeTab === 'new_liturgy' || (activeTab === 'Liturgy' && selectedItem?.type === 'liturgy')) ? (
+                 <LiturgyEditor
+                   libraryHandle={libraryHandle}
+                   initialFile={selectedItem?.type === 'liturgy' && selectedItem?.fileHandle
+                     ? { name: selectedItem.filename, handle: selectedItem.fileHandle }
+                     : null
+                   }
+                   onSaved={(saved) => {
+                     // Re-load the saved file into selectedItem
+                     const load = async () => {
+                       const f = await saved.handle.getFile();
+                       const text = await f.text();
+                       const parsed = parseLiturgyMarkdown(text);
+                       const updated = {
+                         type: 'liturgy',
+                         id: saved.name,
+                         filename: saved.name,
+                         title: parsed.metadata.title || saved.name.replace('.md', ''),
+                         slides: parsed.slides,
+                         rawText: text,
+                         fileHandle: saved.handle,
+                       };
+                       setSelectedItem(updated);
+                       setActiveTab('Liturgy');
+                     };
+                     load();
+                   }}
+                   onDeleted={() => {
+                     setSelectedItem(null);
+                     setActiveTab('Liturgy');
+                   }}
+                   onRefresh={refreshLibrary}
+                 />
+              ) : activeTab === 'new_song' ? (
                  <SongEditor 
                    libraryHandle={libraryHandle} 
                    initialData={editingSong}

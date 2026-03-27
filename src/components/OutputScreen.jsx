@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { Volume2, HelpCircle, Monitor, ChevronRight } from 'lucide-react';
+import { Volume2 } from 'lucide-react';
 import { getYoutubeEmbedUrl } from '../utils/media';
 
 // High-Impact Smart Scaler
@@ -40,17 +40,76 @@ function AutoFitLyrics({ lines, isMaster = false, isLiveBroadcast = false, isCle
   );
 }
 
-export default function OutputScreen({ payload, isMaster = false, isLiveBroadcast = false, onStatusUpdate = null, remoteCommand = null }) {
+// Liturgy-aware scaler — white for speaker, amber/yellow for response
+function AutoFitLiturgy({ lines, liturgyType = 'speaker', isMaster = false, isLiveBroadcast = false, isClearText = false }) {
+  const containerRef = useRef(null);
+  const textRef = useRef(null);
+  const [fontSize, setFontSize] = useState(20);
+  const isHighImpact = isMaster || isLiveBroadcast;
+  const paddingClass = isHighImpact ? "px-[10%] py-[10%]" : "p-4";
+  const opacityClass = isClearText ? "opacity-0" : "opacity-100";
+  const isResponse = liturgyType === 'response';
+  useEffect(() => {
+    const fit = () => {
+      const container = containerRef.current;
+      const text = textRef.current;
+      if (!container || !text) return;
+      const maxW = container.clientWidth * (isHighImpact ? 0.8 : 0.95);
+      const maxH = container.clientHeight * (isHighImpact ? 0.8 : 0.9);
+      let lo = 8, hi = Math.max(8, container.clientHeight), best = 8;
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        text.style.fontSize = mid + 'px';
+        if (text.scrollWidth <= maxW && text.scrollHeight <= maxH) { best = mid; lo = mid + 1; }
+        else { hi = mid - 1; }
+      }
+      setFontSize(best);
+    };
+    const ro = new ResizeObserver(fit);
+    if (containerRef.current) ro.observe(containerRef.current);
+    fit();
+    return () => ro.disconnect();
+  }, [lines, isHighImpact]);
+  return (
+    <div ref={containerRef} className={`absolute inset-0 flex items-center justify-center overflow-hidden transition-opacity duration-300 ${paddingClass} ${opacityClass}`}>
+      {isResponse && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 text-[10px] font-black uppercase tracking-[0.3em] opacity-50" style={{ color: '#fbbf24', fontSize: Math.max(10, fontSize * 0.15) + 'px' }}>
+          ↩ Response
+        </div>
+      )}
+      <div
+        ref={textRef}
+        className={`font-black text-center leading-[1.2] drop-shadow-[0_4px_48px_rgba(0,0,0,1)] antialiased w-max transition-colors duration-300`}
+        style={{
+          fontSize: fontSize + 'px',
+          color: isResponse ? '#fcd34d' : '#ffffff',
+          textShadow: isResponse
+            ? '0 0 60px rgba(251,191,36,0.4), 0 4px 48px rgba(0,0,0,1)'
+            : '0 4px 48px rgba(0,0,0,1)',
+        }}
+      >
+        {lines.map((line, i) => <div key={i} className="whitespace-nowrap">{line}</div>)}
+      </div>
+    </div>
+  );
+}
+
+// muteAudio: force-silence this instance (used by dashboard preview monitor).
+// isMaster: this instance drives playback & reports status.
+export default function OutputScreen({ payload, isMaster = false, isLiveBroadcast = false, muteAudio = false, onStatusUpdate = null, remoteCommand = null }) {
     const videoRef = useRef(null);
     const iframeRef = useRef(null);
     const [hasInteracted, setHasInteracted] = useState(false);
-    const isMuted = !isMaster;
+
+    // isMuted controls the <video> element's muted attribute.
+    // muteAudio overrides: always mute (used for dashboard preview which should be silent).
+    // Otherwise, projectors/followers follow the normal rule (!isMaster = muted for followers).
+    const isMuted = muteAudio || !isMaster;
 
     // Tracking for Master & Followers
     const followerTimeRef = useRef(0);
     const followerDurationRef = useRef(0);
     const followerPausedRef = useRef(payload?.isPaused ?? true);
-    const lastUrlRef = useRef("");
     const lastSentPauseRef = useRef(null);
     const isMutingReports = useRef(false);
     const isVimeoReady = useRef(false);
@@ -72,63 +131,64 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        urlObj.searchParams.set('modestbranding', '1');
        urlObj.searchParams.set('iv_load_policy', '3');
        urlObj.searchParams.set('origin', window.location.origin);
-       if (!isMaster) urlObj.searchParams.set('autoplay', '1');
-       else urlObj.searchParams.set('autoplay', payload.itemAutoPlay ? '1' : '0');
-       
-       // Always start muted in the URL to ensure the browser allows the player to load and start.
-       // We will unmute via API (forceUnmute) after interaction.
+
+       // For master (projector/preview): respect the item's autoPlay setting.
+       // For followers (network view): always autoplay so they stay in sync.
+       if (!isMaster) {
+          urlObj.searchParams.set('autoplay', '1');
+       } else {
+          urlObj.searchParams.set('autoplay', payload.itemAutoPlay ? '1' : '0');
+       }
+
+       // YouTube & Vimeo must start muted (browser autoplay policy).
+       // We unmute via API after the first user interaction / play command.
        if (payload.isYouTube) urlObj.searchParams.set('mute', '1');
        if (payload.isVimeo) urlObj.searchParams.set('muted', '1');
-       return urlObj.toString();
-    }, [payload?.activeMediaUrl, isMaster, payload?.isYouTube, payload?.itemAutoPlay]);
 
-    // 2. Command Handler
+       return urlObj.toString();
+    }, [payload?.activeMediaUrl, isMaster, payload?.isYouTube, payload?.isVimeo, payload?.itemAutoPlay]);
+
+    // 2. Command Helpers
     const sendIframeCommand = (cmd, args = []) => {
        if (!iframeRef.current) return;
-       const msg = JSON.stringify({ event: 'command', func: cmd, args: args });
-       iframeRef.current.contentWindow?.postMessage(msg, '*');
+       iframeRef.current.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: cmd, args }), '*');
     };
 
-     const sendVimeoCommand = (method, value = "") => {
-        if (!iframeRef.current?.contentWindow) return;
-        const msg = { method, value };
-        // Be explicit with origin for better reliability across browsers
-        iframeRef.current.contentWindow.postMessage(msg, 'https://player.vimeo.com');
-     };
+    const sendVimeoCommand = (method, value = "") => {
+       if (!iframeRef.current?.contentWindow) return;
+       iframeRef.current.contentWindow.postMessage({ method, value }, 'https://player.vimeo.com');
+    };
 
+    // forceUnmute: removes the forced-mute that browsers apply at startup.
+    // Called when the user (or a remote play command) triggers playback.
     const forceUnmute = () => {
        setHasInteracted(true);
-       if (isMaster) {
-          if (payload?.isYouTube) {
-             sendIframeCommand('mute');
-             setTimeout(() => {
-                sendIframeCommand('unMute');
-                sendIframeCommand('setVolume', [100]);
-             }, 100);
-          } else if (payload?.isVimeo) {
-              sendVimeoCommand('setMuted', false);
-              sendVimeoCommand('setVolume', 1);
-              sendVimeoCommand('play');
-              setTimeout(() => {
-                 sendVimeoCommand('setMuted', false);
-                 sendVimeoCommand('setVolume', 1);
-                 sendVimeoCommand('play');
-                 // If stuck at 0, a tiny seek can sometimes kickstart playback
-                 if (followerTimeRef.current <= 0) {
-                    sendVimeoCommand('setCurrentTime', 0.1);
-                 }
-              }, 500);
-          }
-       }
-       if (videoRef.current && isMaster) {
-          videoRef.current.muted = true;
-          setTimeout(() => { videoRef.current.muted = false; videoRef.current.volume = 1; }, 100);
+       if (!isMaster) return; // Only masters control their own audio
+
+       if (payload?.isYouTube) {
+          sendIframeCommand('mute');
+          setTimeout(() => {
+             sendIframeCommand('unMute');
+             sendIframeCommand('setVolume', [100]);
+          }, 100);
+       } else if (payload?.isVimeo) {
+          sendVimeoCommand('setMuted', false);
+          sendVimeoCommand('setVolume', 1);
+          setTimeout(() => {
+             sendVimeoCommand('setMuted', false);
+             sendVimeoCommand('setVolume', 1);
+             if (followerTimeRef.current <= 0) sendVimeoCommand('setCurrentTime', 0.1);
+          }, 500);
+       } else if (videoRef.current && !muteAudio) {
+          // Local video: unmute programmatically (handles browser autoplay policy edge cases)
+          videoRef.current.muted = false;
+          videoRef.current.volume = 1;
        }
     };
 
     useEffect(() => { if (hasInteracted && isMaster) forceUnmute(); }, [hasInteracted]);
 
-    // 3. Robust YouTube/Vimeo/Local Master Sync Engine
+    // 3. YouTube & Vimeo Status Polling (Master only)
     const statusHandlerRef = useRef(onStatusUpdate);
     useEffect(() => { statusHandlerRef.current = onStatusUpdate; }, [onStatusUpdate]);
 
@@ -138,7 +198,6 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
        const handleMessage = (event) => {
           try {
-             // 1. YouTube Protocol
              if (payload.isYouTube) {
                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
                 const info = data.info || data.data;
@@ -146,7 +205,6 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                    const time = info.currentTime ?? followerTimeRef.current;
                    const duration = info.duration ?? followerDurationRef.current;
                    const paused = info.playerState !== undefined ? (info.playerState !== 1 && info.playerState !== 3) : followerPausedRef.current;
-                   
                    if (duration > 0) {
                       statusHandlerRef.current?.({ time, duration, paused, ts: Date.now() });
                       followerTimeRef.current = time;
@@ -156,54 +214,42 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                 }
              }
 
-              // 2. Vimeo Protocol
-              if (payload.isVimeo) {
-                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                 
-                 // Vimeo events use 'event' field, responses use 'method' field
-                 const eventName = data.event || data.method;
-                 
-                 if (eventName === 'ready') {
-                    isVimeoReady.current = true;
-                    sendVimeoCommand('addEventListener', 'play');
-                    sendVimeoCommand('addEventListener', 'pause');
-                    sendVimeoCommand('addEventListener', 'finish');
-                    sendVimeoCommand('addEventListener', 'timeupdate');
-                    // If we're already supposed to be playing, send play command now that we're ready
-                    if (!followerPausedRef.current) {
-                        sendVimeoCommand('play');
-                    }
-                 }
+             if (payload.isVimeo) {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                const eventName = data.event || data.method;
 
-                 if (eventName === 'timeupdate' && data.data) {
-                    const time = data.data.seconds;
-                    const duration = data.data.duration;
-                    // If we're getting timeupdates, we're likely playing
-                    if (followerPausedRef.current && time > followerTimeRef.current) {
-                        followerPausedRef.current = false;
-                    }
-                    statusHandlerRef.current?.({ time, duration, paused: followerPausedRef.current, ts: Date.now() });
-                    followerTimeRef.current = time;
-                    followerDurationRef.current = duration;
-                 } else if (eventName === 'play') {
-                    statusHandlerRef.current?.({ paused: false, ts: Date.now() });
-                    followerPausedRef.current = false;
-                 } else if (eventName === 'pause') {
-                    statusHandlerRef.current?.({ paused: true, ts: Date.now() });
-                    followerPausedRef.current = true;
-                 } else if (eventName === 'finish') {
-                    statusHandlerRef.current?.({ paused: true, time: followerDurationRef.current, ts: Date.now() });
-                    followerPausedRef.current = true;
-                 } else if (data.method === 'getCurrentTime') {
-                    const time = data.value;
-                    statusHandlerRef.current?.({ time, ts: Date.now() });
-                    followerTimeRef.current = time;
-                 } else if (data.method === 'getDuration') {
-                    const duration = data.value;
-                    statusHandlerRef.current?.({ duration, ts: Date.now() });
-                    followerDurationRef.current = duration;
-                 }
-              }
+                if (eventName === 'ready') {
+                   isVimeoReady.current = true;
+                   sendVimeoCommand('addEventListener', 'play');
+                   sendVimeoCommand('addEventListener', 'pause');
+                   sendVimeoCommand('addEventListener', 'finish');
+                   sendVimeoCommand('addEventListener', 'timeupdate');
+                   if (!followerPausedRef.current) sendVimeoCommand('play');
+                }
+                if (eventName === 'timeupdate' && data.data) {
+                   const time = data.data.seconds;
+                   const duration = data.data.duration;
+                   if (followerPausedRef.current && time > followerTimeRef.current) followerPausedRef.current = false;
+                   statusHandlerRef.current?.({ time, duration, paused: followerPausedRef.current, ts: Date.now() });
+                   followerTimeRef.current = time;
+                   followerDurationRef.current = duration;
+                } else if (eventName === 'play') {
+                   statusHandlerRef.current?.({ paused: false, ts: Date.now() });
+                   followerPausedRef.current = false;
+                } else if (eventName === 'pause') {
+                   statusHandlerRef.current?.({ paused: true, ts: Date.now() });
+                   followerPausedRef.current = true;
+                } else if (eventName === 'finish') {
+                   statusHandlerRef.current?.({ paused: true, time: followerDurationRef.current, ts: Date.now() });
+                   followerPausedRef.current = true;
+                } else if (data.method === 'getCurrentTime') {
+                   statusHandlerRef.current?.({ time: data.value, ts: Date.now() });
+                   followerTimeRef.current = data.value;
+                } else if (data.method === 'getDuration') {
+                   statusHandlerRef.current?.({ duration: data.value, ts: Date.now() });
+                   followerDurationRef.current = data.value;
+                }
+             }
           } catch (e) {}
        };
 
@@ -212,7 +258,6 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        const poll = setInterval(() => {
           if (!iframeRef.current?.contentWindow) return;
           const win = iframeRef.current.contentWindow;
-          
           if (payload.isYouTube) {
              win.postMessage(JSON.stringify({ event: "listening" }), "*");
              win.postMessage(JSON.stringify({ event: "command", func: "getDuration" }), "*");
@@ -220,7 +265,6 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           } else if (payload.isVimeo) {
              sendVimeoCommand('getCurrentTime');
              sendVimeoCommand('getDuration');
-             // Ensure we are subscribed even if we missed the 'ready' event
              if (!isVimeoReady.current) {
                sendVimeoCommand('addEventListener', 'play');
                sendVimeoCommand('addEventListener', 'pause');
@@ -228,7 +272,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                sendVimeoCommand('addEventListener', 'timeupdate');
              }
           }
-       }, 500); // 500ms for smoother master tracking
+       }, 500);
 
        return () => {
           window.removeEventListener('message', handleMessage);
@@ -236,18 +280,16 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        };
     }, [isMaster, payload?.activeMediaUrl, payload?.isYouTube, payload?.isVimeo]);
 
-    // 3. Remote Command Relay
+    // 4. Remote Command Relay (play/pause/seek/volume from dashboard controls)
     useEffect(() => {
        if (!remoteCommand) return;
        const { command, value } = remoteCommand;
-       
-       // AUTO-UNMUTE: If we get a play command on the dashboard, clear the interaction overlay
+
+       // Any play command triggers forceUnmute so YouTube/Vimeo/local audio is restored.
        if (isMaster && command === 'play') {
            forceUnmute();
-           // Don't report status here, wait for the actual 'play' event from the player
        }
        if (isMaster && command === 'pause') {
-           // We can report paused: true immediately to let the UI react
            followerPausedRef.current = true;
            statusHandlerRef.current?.({ paused: true, ts: Date.now() });
        }
@@ -266,14 +308,15 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
        if (videoRef.current) {
           const v = videoRef.current;
-          if (command === 'play') v.play().catch(() => {});
+          if (command === 'play') { v.muted = false; v.volume = 1; v.play().catch(() => {}); }
           if (command === 'pause') v.pause();
           if (command === 'seek') v.currentTime = value;
+          if (command === 'volume') { v.volume = value; v.muted = (value === 0); }
        }
        setTimeout(() => { isMutingReports.current = false; }, 300);
     }, [remoteCommand, isMaster, payload?.isYouTube, payload?.isVimeo]);
 
-    // 5. Follower Passive Sync
+    // 5. Follower Passive Sync (network/projector followers)
     useEffect(() => {
        if (isMaster || !payload) return;
        const { currentTime, isPaused, currentTimeTs } = payload;
@@ -297,14 +340,15 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           if (diff > 0.5) videoRef.current.currentTime = targetTime;
           if (isPaused !== lastSentPauseRef.current) {
              lastSentPauseRef.current = isPaused;
-             if (isPaused) videoRef.current.pause(); else videoRef.current.play().catch(() => {});
+             if (isPaused) videoRef.current.pause();
+             else videoRef.current.play().catch(() => {});
           }
        }
     }, [payload?.currentTime, payload?.isPaused, isMaster]);
 
     const isNetworkViewer = payload?.isNetworkViewer;
     const isDashboardPreview = !isMaster && !isNetworkViewer;
-    const shouldShowLiveContent = payload?.isLive || isDashboardPreview || payload?.isBlackScreen || payload?.isShowLogo;
+    const shouldShowLiveContent = payload?.isLive || isDashboardPreview || isLiveBroadcast || muteAudio || payload?.isBlackScreen || payload?.isShowLogo;
 
     const renderContent = () => {
         if (!payload || !shouldShowLiveContent) {
@@ -316,7 +360,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
         }
 
         if (payload.isBlackScreen) return <div className="absolute inset-0 bg-black z-40" />;
-        
+
         if (payload.isShowLogo && payload.logoUrl) {
             return (
               <div className="absolute inset-0 bg-black z-30 flex items-center justify-center">
@@ -325,12 +369,13 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
             );
         }
 
-        // The "Restore Audio" overlay is ONLY needed for YouTube/Vimeo because those
-        // players are force-started muted (browser policy). Local videos can play with
-        // audio from the start via the video element's own `muted` prop.
-        // Also: only show when autoplay is enabled — if the video hasn't started yet
-        // because autoplay is off, we just want the video to sit naturally.
-        const needsAudioRestoreOverlay = isMaster
+        // Show the "Restore Audio" overlay ONLY when:
+        // - This is a master instance (projector popup or dashboard preview)
+        // - The video is YouTube or Vimeo (those are force-muted by URL params)
+        // - The user hasn't interacted yet
+        // - The video is set to autoplay (if it's not autoplaying, it's paused naturally — no overlay needed)
+        const needsAudioRestore = isMaster
+            && !muteAudio   // Don't show in the silenced dashboard preview
             && !hasInteracted
             && payload.mediaType === 'video'
             && (payload.isYouTube || payload.isVimeo)
@@ -343,45 +388,47 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
               )}
               {payload.mediaType === 'video' && payload.activeMediaUrl && (
                  (payload.isYouTube || payload.isVimeo) ? (
-                    <div className={`w-full h-full relative transition-all duration-500 ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}>
-                      <iframe 
-                        ref={iframeRef} 
+                    <div className={`w-full h-full relative ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}>
+                      <iframe
+                        ref={iframeRef}
                         id={payload.isVimeo ? "halos-vimeo" : undefined}
                         src={iframeSrc}
-                        className="w-full h-full scale-[1.01] origin-center" 
+                        className="w-full h-full scale-[1.01] origin-center"
                         style={{ clipPath: 'inset(1% 1% 1% 1%)' }}
-                        frameBorder="0" 
+                        frameBorder="0"
                         allow="autoplay; fullscreen; encrypted-media"
                       />
                     </div>
                  ) : (
-                    <video 
-                      ref={videoRef} 
-                      src={payload.activeMediaUrl} 
-                      autoPlay={payload.itemAutoPlay} 
-                      muted={isMuted} 
-                      loop 
-                      className={`w-full h-full object-cover transition-all duration-500 ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}
+                    <video
+                      ref={videoRef}
+                      src={payload.activeMediaUrl}
+                      autoPlay={isMaster ? payload.itemAutoPlay : true}
+                      muted={isMuted}
+                      loop
+                      className={`w-full h-full object-cover ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}
                       onLoadedMetadata={(e) => {
                          if (isMaster) {
-                            statusHandlerRef.current?.({ 
-                               duration: e.target.duration, 
-                               time: e.target.currentTime, 
-                               paused: e.target.paused, 
-                               ts: Date.now() 
+                            // Ensure local video has audio (browser may have blocked it)
+                            if (!muteAudio) { e.target.muted = false; e.target.volume = 1; }
+                            statusHandlerRef.current?.({
+                               duration: e.target.duration,
+                               time: e.target.currentTime,
+                               paused: e.target.paused,
+                               ts: Date.now()
                             });
                          }
                       }}
                       onTimeUpdate={(e) => {
                          if (isMaster) {
                             const now = Date.now();
-                            if (!videoRef.current._lastReport || now - videoRef.current._lastReport > 500) {
+                            if (!videoRef.current._lastReport || now - videoRef.current._lastReport > 250) {
                                videoRef.current._lastReport = now;
-                               statusHandlerRef.current?.({ 
-                                  time: e.target.currentTime, 
-                                  duration: e.target.duration, 
-                                  paused: e.target.paused, 
-                                  ts: now 
+                               statusHandlerRef.current?.({
+                                  time: e.target.currentTime,
+                                  duration: e.target.duration,
+                                  paused: e.target.paused,
+                                  ts: now
                                });
                             }
                          }
@@ -391,18 +438,25 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                     />
                  )
               )}
-              {payload.activeSlide && payload.activeSlide.length > 0 && (
+              {(payload.mediaType === 'song' || payload.mediaType === 'bible') && payload.activeSlide && payload.activeSlide.length > 0 && (
                  <AutoFitLyrics lines={payload.activeSlide} isMaster={isMaster} isLiveBroadcast={isLiveBroadcast} isClearText={payload.isClearText} />
               )}
-              {/* Only show "Restore Audio" overlay for YouTube/Vimeo with autoplay ON.
-                  Local videos are not force-muted, and non-autoplay videos should just sit quietly. */}
-              {needsAudioRestoreOverlay && (
+              {payload.mediaType === 'liturgy' && payload.activeSlide && payload.activeSlide.length > 0 && (
+                 <AutoFitLiturgy
+                   lines={payload.activeSlide}
+                   liturgyType={payload.liturgyType || 'speaker'}
+                   isMaster={isMaster}
+                   isLiveBroadcast={isLiveBroadcast}
+                   isClearText={payload.isClearText}
+                 />
+              )}
+              {needsAudioRestore && (
                  <div className="absolute inset-0 bg-blue-600/30 backdrop-blur-xl z-50 flex flex-col items-center justify-center text-white p-12 cursor-pointer">
                     <div className="bg-blue-600 p-8 rounded-full mb-6 animate-bounce shadow-2xl">
                        <Volume2 size={64} fill="currentColor" />
                     </div>
-                    <h2 className="text-4xl font-black uppercase tracking-widest text-shadow">Restore Audio</h2>
-                    <p className="mt-4 text-white/80 font-bold uppercase tracking-widest text-sm text-center">Dashboard requires one interaction to enable core app sound</p>
+                    <h2 className="text-4xl font-black uppercase tracking-widest">Restore Audio</h2>
+                    <p className="mt-4 text-white/80 font-bold uppercase tracking-widest text-sm text-center">Click to enable audio on this projector</p>
                  </div>
               )}
            </>
@@ -411,9 +465,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
     return (
       <div className="w-full h-full bg-black overflow-hidden relative font-sans" onClick={() => setHasInteracted(true)}>
-         
          {renderContent()}
-
       </div>
     );
 }

@@ -17,9 +17,12 @@ export default function LiveControl({
 }) {
   const [playVolume, setPlayVolume] = useState(1);
   const [scrubTime, setScrubTime] = useState(0);
-  // Local status tracked directly from the projector's status updates (via BroadcastChannel in App)
-  // This ensures the controls respond immediately without extra roundtrips.
-  
+
+  // localStatus is updated IMMEDIATELY when the preview's OutputScreen reports an event.
+  // This gives instant playhead movement and icon state without waiting for the
+  // BroadcastChannel → App.jsx → prop roundtrip.
+  const [localStatus, setLocalStatus] = useState({ time: 0, duration: 0, paused: true });
+
   const isDragging = useRef(false);
   const isDraggingVol = useRef(false);
   const lastBroadcastRef = useRef(0);
@@ -28,113 +31,108 @@ export default function LiveControl({
   const lastStatusUpdateRef = useRef(0);
   const scrubTimeRef = useRef(0);
 
-  // Use playbackStatus from App (sourced from projector BroadcastChannel) as the truth
-  const displayTime = isDragging.current ? scrubTime : (playbackStatus?.time || livePayload?.currentTime || 0);
-  const displayDuration = playbackStatus?.duration || livePayload?.duration || 0;
-  // Prefer playbackStatus.paused from the projector; fall back to presentationPaused prop
-  const displayPaused = playbackStatus?.paused !== undefined ? playbackStatus.paused : presentationPaused;
+  // Merge: prefer the App-level playbackStatus (which can include projector popup feedback)
+  // but also update immedialety from localStatus for snappy UI.
+  const displayTime = isDragging.current
+    ? scrubTime
+    : (playbackStatus?.time || localStatus.time || livePayload?.currentTime || 0);
+  const displayDuration = playbackStatus?.duration || localStatus.duration || livePayload?.duration || 0;
+  // Use localStatus.paused for instant icon response; playbackStatus confirms from projector.
+  const displayPaused = playbackStatus?.paused !== undefined
+    ? playbackStatus.paused
+    : (localStatus.paused !== undefined ? localStatus.paused : presentationPaused);
   const displayVolume = isDraggingVol.current ? playVolume : (playbackStatus?.volume ?? playVolume);
 
-  // Pixel-Perfect Parity: Scaler for the Virtual 16:9 Screen (1600x900)
+  // 16:9 preview scaler
   useEffect(() => {
      if (!previewRef.current) return;
      const ro = new ResizeObserver((entries) => {
         for (let entry of entries) {
-           const width = entry.contentRect.width;
-           setPreviewScale(width / 1600);
+           setPreviewScale(entry.contentRect.width / 1600);
         }
      });
      ro.observe(previewRef.current);
      return () => ro.disconnect();
   }, []);
 
-  // Consolidate playback commands into the same channel as the payload for reliability
+  // broadcastPlayback sends a command to the projector popup via BroadcastChannel
   const broadcastPlayback = (cmdType, val) => {
      if (cmdType === 'seek') {
         const now = Date.now();
         if (now - lastBroadcastRef.current < 50) return;
         lastBroadcastRef.current = now;
      }
-
      const channel = new BroadcastChannel('halos-projector-hub');
-     channel.postMessage({ 
-        type: 'playback', 
-        command: cmdType, 
-        value: val, 
-        source: 'dashboard-ui', 
-        isYoutube: livePayload?.isYouTube, 
-        isVimeo: livePayload?.isVimeo 
+     channel.postMessage({
+        type: 'playback',
+        command: cmdType,
+        value: val,
+        source: 'dashboard-ui',
+        isYoutube: livePayload?.isYouTube,
+        isVimeo: livePayload?.isVimeo
      });
      channel.close();
   };
 
-  const lastCommandTimeRef = useRef(0);
-
-  const notifyAppOfStatus = (overrides) => {
+  // notifyAppOfStatus tells App.jsx to update its playbackStatus state (and re-send to network)
+  const notifyAppOfStatus = useCallback((fresh) => {
      const channel = new BroadcastChannel('halos-projector-hub');
-     channel.postMessage({ 
-        type: 'status', 
-        time: overrides.time !== undefined ? overrides.time : displayTime, 
-        paused: overrides.paused !== undefined ? overrides.paused : presentationPaused, 
-        duration: overrides.duration !== undefined ? overrides.duration : displayDuration,
+     channel.postMessage({
+        type: 'status',
+        time: fresh.time,
+        paused: fresh.paused,
+        duration: fresh.duration,
         ts: Date.now(),
-        slideshowInterval: overrides.slideshowInterval
+        slideshowInterval: fresh.slideshowInterval
      });
      channel.close();
-  };
-
-  // NOTE: The dashboard preview OutputScreen uses isMaster={false} so it does NOT
-  // report playback status here. Status flows: Projector popup -> BroadcastChannel
-  // -> App.jsx setPlaybackStatus -> passed as `playbackStatus` prop to this component.
-  // This callback is a no-op for the preview; kept for future use.
-  const handleStatusUpdate = useCallback((status) => {
-     // Preview is not master, so this won't fire for video events.
-     // It may fire for non-video status. Broadcast upward just in case.
-     if (status && (status.time !== undefined || status.duration !== undefined || status.paused !== undefined)) {
-        notifyAppOfStatus(status);
-     }
   }, []);
+
+  // handleStatusUpdate is called by the preview's OutputScreen (isMaster=true) on every
+  // time/play/pause event. We update localStatus immediately for snappy controls.
+  const handleStatusUpdate = useCallback((status) => {
+     if (!status) return;
+     setLocalStatus(prev => ({
+        time:     status.time     !== undefined ? status.time     : prev.time,
+        duration: status.duration !== undefined ? status.duration : prev.duration,
+        paused:   status.paused   !== undefined ? status.paused   : prev.paused,
+     }));
+     // Broadcast so App updates playbackStatus (which feeds the projector popup & network)
+     notifyAppOfStatus(status);
+  }, [notifyAppOfStatus]);
+
+  // Reset localStatus when item changes
+  useEffect(() => {
+     setLocalStatus({ time: 0, duration: 0, paused: !livePayload?.itemAutoPlay });
+  }, [livePayload?.activeMediaUrl]);
 
   const handlePickLogo = async (e) => {
     e.stopPropagation();
     try {
       const [fileHandle] = await window.showOpenFilePicker({
-        types: [{
-          description: 'Images',
-          accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'] }
-        }]
+        types: [{ description: 'Images', accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'] } }]
       });
       const file = await fileHandle.getFile();
       const { set } = await import('idb-keyval');
       await set('halos_logo_blob', file);
       onPickLogo(URL.createObjectURL(file));
       setIsShowLogo(true);
-    } catch(err) {
-      console.log('User cancelled logo selection');
-    }
+    } catch(err) {}
   };
 
   const formatTime = (sec) => {
-     if (!sec || isNaN(sec)) return "0:00";
+     if (!sec || isNaN(sec) || sec <= 0) return "0:00";
      const m = Math.floor(sec / 60);
      const s = Math.floor(sec % 60);
      return `${m}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const handleTogglePlay = () => {
-      const nextPaused = !displayPaused;
-      lastCommandTimeRef.current = Date.now();
-      broadcastPlayback(nextPaused ? 'pause' : 'play');
-      setPresentationPaused(nextPaused);
-      notifyAppOfStatus({ paused: nextPaused });
   };
 
   const preMuteVolumeRef = useRef(1);
 
   return (
     <div className="flex flex-col items-center h-full space-y-4 pt-1">
-      
-      {/* 1. True Local WYSIWYG Preview Box */}
+
+      {/* 1. Live Preview Box */}
       <div className="w-full">
         <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2 flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
@@ -142,71 +140,72 @@ export default function LiveControl({
              Live Output Preview
           </div>
         </div>
-        
-        <div 
+
+        <div
            ref={previewRef}
            className={`aspect-video w-full bg-black rounded-xl border-2 shadow-inner transition-colors duration-500 overflow-hidden relative ${isLive ? 'border-green-500/30' : 'border-neutral-800'}`}
         >
-           <div 
-              style={{ 
-                width: '1600px', 
-                height: '900px', 
-                transform: `scale(${previewScale})`, 
-                transformOrigin: 'top left',
-                position: 'absolute',
-                top: 0,
-                left: 0
-              }}
-           >
-              <OutputScreen 
-                payload={livePayload} 
-                isMaster={false}
-                onStatusUpdate={handleStatusUpdate} 
+           <div style={{
+             width: '1600px', height: '900px',
+             transform: `scale(${previewScale})`,
+             transformOrigin: 'top left',
+             position: 'absolute', top: 0, left: 0
+           }}>
+              {/* isMaster={true} → this preview is the local status authority.
+                  muteAudio={true} → silenced; it's a monitor only, not for sound. */}
+              <OutputScreen
+                payload={livePayload}
+                isMaster={true}
+                muteAudio={true}
+                onStatusUpdate={handleStatusUpdate}
                 remoteCommand={remoteCommand}
-                isLiveBroadcast={true} /* Force High-Impact Scaling Mode */
+                isLiveBroadcast={true}
               />
            </div>
         </div>
 
-        {/* 2. REMOTE PLAYBACK CONTROLS (Compact Version) */}
+        {/* 2. Playback Controls */}
         {(livePayload?.mediaType === 'video' || livePayload?.mediaType === 'slide_deck') && (
            <div className="mt-3 bg-neutral-900/80 border border-neutral-800 rounded-xl p-3 space-y-2.5 shadow-xl">
               <div className="flex items-center justify-between gap-3">
-                 <button 
-                  onClick={() => {
-                        const nextPaused = !displayPaused;
-                        lastCommandTimeRef.current = Date.now();
-                        broadcastPlayback(nextPaused ? 'pause' : 'play');
-                        setPresentationPaused(nextPaused); // Optimistic local update
-                    }}
+                 {/* Play / Pause button */}
+                 <button
+                   onClick={() => {
+                      const nextPaused = !displayPaused;
+                      // Update localStatus immediately for instant icon switch
+                      setLocalStatus(prev => ({ ...prev, paused: nextPaused }));
+                      broadcastPlayback(nextPaused ? 'pause' : 'play');
+                      setPresentationPaused(nextPaused);
+                   }}
                    className="w-9 h-9 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center transition active:scale-95 shadow-lg flex-shrink-0"
                  >
-                    {displayPaused ? <Play size={18} fill="currentColor" className="ml-0.5" /> : <Pause size={18} fill="currentColor" />}
+                    {displayPaused
+                      ? <Play size={18} fill="currentColor" className="ml-0.5" />
+                      : <Pause size={18} fill="currentColor" />}
                  </button>
-                 
+
                  {livePayload?.mediaType === 'video' ? (
                      <>
                          <div className="flex-1 flex flex-col gap-1">
-                            <input 
+                            {/* Seek / playhead slider */}
+                            <input
                               type="range"
                               min="0"
-                              max={displayDuration}
+                              max={displayDuration || 100}
                               step="0.1"
-                              value={displayTime}
-                              onMouseDown={() => { 
-                                  isDragging.current = true; 
-                                  setScrubTime(displayTime);
-                              }}
-                              onMouseUp={() => { 
+                              value={Math.min(displayTime, displayDuration || 100)}
+                              onMouseDown={() => { isDragging.current = true; setScrubTime(displayTime); }}
+                              onMouseUp={() => {
                                  isDragging.current = false;
                                  const channel = new BroadcastChannel('halos-projector-hub');
-                                 channel.postMessage({ 
-                                    type: 'playback', command: 'seek', value: scrubTimeRef.current, 
-                                    source: 'dashboard-ui', isYoutube: livePayload?.isYouTube, isVimeo: livePayload?.isVimeo 
+                                 channel.postMessage({
+                                    type: 'playback', command: 'seek', value: scrubTimeRef.current,
+                                    source: 'dashboard-ui', isYoutube: livePayload?.isYouTube, isVimeo: livePayload?.isVimeo
                                  });
                                  channel.close();
                                  if (!displayPaused) setTimeout(() => broadcastPlayback('play'), 50);
-                                 notifyAppOfStatus({ time: scrubTimeRef.current, paused: displayPaused });
+                                 setLocalStatus(prev => ({ ...prev, time: scrubTimeRef.current }));
+                                 notifyAppOfStatus({ time: scrubTimeRef.current, paused: displayPaused, duration: displayDuration });
                               }}
                               onChange={(e) => {
                                  const time = parseFloat(e.target.value);
@@ -216,29 +215,34 @@ export default function LiveControl({
                                  const now = Date.now();
                                  if (now - lastStatusUpdateRef.current > 200) {
                                     lastStatusUpdateRef.current = now;
-                                    notifyAppOfStatus({ time, paused: displayPaused });
+                                    notifyAppOfStatus({ time, paused: displayPaused, duration: displayDuration });
                                  }
                               }}
                               className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
                             />
+                            {/* Time display */}
                             <div className="flex justify-between text-[10px] font-black font-mono tracking-tighter">
                                <span className={displayTime > 0 ? "text-blue-400" : "text-neutral-500"}>
                                   {formatTime(displayTime)}
                                </span>
                                <div className="flex items-center gap-2">
                                   {isSyncingMedia && <span className="text-blue-500 animate-pulse uppercase tracking-tighter">Syncing...</span>}
-                                  <span className="text-white font-black">-{formatTime(Math.max(0, displayDuration - displayTime))}</span>
+                                  <span className={displayDuration > 0 ? "text-white font-black" : "text-neutral-600"}>
+                                     -{formatTime(Math.max(0, displayDuration - displayTime))}
+                                  </span>
                                </div>
                             </div>
                          </div>
 
-                         <button 
-                            onClick={() => { 
+                         {/* Restart button */}
+                         <button
+                            onClick={() => {
                                setScrubTime(0);
+                               setLocalStatus(prev => ({ ...prev, time: 0, paused: false }));
                                setPresentationPaused(false);
                                broadcastPlayback('seek', 0);
                                setTimeout(() => broadcastPlayback('play'), 100);
-                               notifyAppOfStatus({ time: 0, paused: false });
+                               notifyAppOfStatus({ time: 0, paused: false, duration: displayDuration });
                             }}
                             className="p-1.5 text-neutral-500 hover:text-white transition"
                          >
@@ -248,11 +252,10 @@ export default function LiveControl({
                  ) : (
                      <div className="flex-1 flex items-center justify-between px-2">
                         <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Auto Timer</span>
-                        <select 
+                        <select
                            value={livePayload?.slideshowInterval || 5}
                            onChange={(e) => {
-                               const val = parseInt(e.target.value);
-                               notifyAppOfStatus({ slideshowInterval: val });
+                               notifyAppOfStatus({ slideshowInterval: parseInt(e.target.value) });
                            }}
                            className="bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg outline-none focus:border-blue-500 transition cursor-pointer"
                         >
@@ -268,6 +271,7 @@ export default function LiveControl({
                  )}
               </div>
 
+              {/* Volume control */}
               {livePayload.mediaType === 'video' && (
                   <div className="flex items-center gap-2.5 border-t border-neutral-800/50 pt-2.5">
                      <button onClick={() => {
@@ -276,13 +280,14 @@ export default function LiveControl({
                         broadcastPlayback('volume', targetVol);
                         setPlayVolume(targetVol);
                      }}>
-                        {displayVolume > 0.5 ? <Volume2 size={14} className="text-neutral-500" /> : 
-                         displayVolume > 0 ? <Volume2 size={14} className="text-neutral-500 opacity-60" /> : 
-                         <VolumeX size={14} className="text-red-500" />}
+                        {displayVolume > 0.5
+                          ? <Volume2 size={14} className="text-neutral-500" />
+                          : displayVolume > 0
+                            ? <Volume2 size={14} className="text-neutral-500 opacity-60" />
+                            : <VolumeX size={14} className="text-red-500" />}
                      </button>
-                     <input 
-                       type="range"
-                       min="0" max="1" step="0.1"
+                     <input
+                       type="range" min="0" max="1" step="0.1"
                        value={displayVolume}
                        onMouseDown={() => isDraggingVol.current = true}
                        onMouseUp={() => isDraggingVol.current = false}
@@ -299,7 +304,8 @@ export default function LiveControl({
         )}
       </div>
 
-      <button 
+      {/* GO LIVE button */}
+      <button
         onClick={toggleLive}
         className={`w-full py-4 text-lg font-black text-white rounded-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
           isLive ? 'bg-green-600 shadow-lg' : 'bg-red-600 shadow-lg'
@@ -310,23 +316,23 @@ export default function LiveControl({
       </button>
 
       <div className="w-full space-y-3">
-        <button 
+        <button
           onClick={() => setIsClearText(!isClearText)}
           className={`w-full p-3.5 border-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${
-            isClearText 
-              ? 'bg-red-900/20 border-red-500 text-red-500' 
+            isClearText
+              ? 'bg-red-900/20 border-red-500 text-red-500'
               : 'bg-neutral-800/50 hover:bg-neutral-800 border-transparent text-neutral-400'
           }`}
         >
           <MonitorX size={16} />
           Clear Text
         </button>
-        
-        <button 
+
+        <button
           onClick={() => setIsBlackScreen(!isBlackScreen)}
           className={`w-full p-3.5 border-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 ${
-            isBlackScreen 
-              ? 'bg-yellow-900/10 border-yellow-500 text-yellow-500' 
+            isBlackScreen
+              ? 'bg-yellow-900/10 border-yellow-500 text-yellow-500'
               : 'bg-black hover:bg-neutral-900 border-neutral-800 text-neutral-400'
           }`}
         >
@@ -335,7 +341,7 @@ export default function LiveControl({
         </button>
 
         <div className="relative w-full flex">
-          <button 
+          <button
             onClick={() => setIsShowLogo(!isShowLogo)}
             className={`flex-1 p-3.5 border-y-2 border-l-2 rounded-l-xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-3 ${
               isShowLogo ? 'bg-blue-900/20 border-blue-500 text-blue-400' : 'bg-neutral-800/50 border-neutral-800 text-neutral-500'
@@ -344,8 +350,8 @@ export default function LiveControl({
             <ImageIcon size={16} />
             Show Logo
           </button>
-          
-          <button 
+
+          <button
             onClick={handlePickLogo}
             className={`px-4 border-y-2 border-r-2 rounded-r-xl transition flex items-center justify-center ${
               isShowLogo ? 'bg-blue-600 border-blue-500 text-white' : 'bg-neutral-700 border-neutral-800 text-neutral-400'

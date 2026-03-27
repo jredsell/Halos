@@ -128,47 +128,68 @@ export default function PreviewEditor({
       {/* Grid */}
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 pt-2 px-1">
         <div className="grid grid-cols-2 gap-x-8 gap-y-12">
-          {slides.map((slide, i) => (
-            <div key={i} ref={el => tileRefs.current[i] = el} className="flex flex-col gap-2 group">
-              {/* Card */}
-              <div
-                onClick={() => onSelectIndex && onSelectIndex(i)}
-                className={`aspect-video rounded-3xl flex flex-col relative cursor-pointer border-2 transition-all duration-300 overflow-hidden ${
-                  i === activeIndex
-                    ? 'bg-blue-900/10 border-blue-500 shadow-[0_0_40px_rgba(59,130,246,0.3)] scale-[1.02] transform z-10'
-                    : 'bg-neutral-900/40 border-neutral-800 hover:border-neutral-700 hover:scale-[1.01] transform'
-                } ${selectedIndices.has(i) ? 'border-blue-500/50' : ''}`}
-              >
-                <UniformTile lines={slide.content || []} />
-
-                {/* Selection Indicator */}
-                <div 
-                  onClick={(e) => { e.stopPropagation(); onToggleSelection(i); }}
-                  className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    selectedIndices.has(i) 
-                      ? 'bg-blue-600 text-white scale-110 shadow-lg' 
-                      : 'bg-black/40 text-white/40 hover:bg-black/60 hover:text-white opacity-0 group-hover:opacity-100'
-                  }`}
+          {slides.map((slide, i) => {
+            const isResponse = slide.type === 'response';
+            const isActiveCard = i === activeIndex;
+            return (
+              <div key={i} ref={el => tileRefs.current[i] = el} className="flex flex-col gap-2 group">
+                {/* Card */}
+                <div
+                  onClick={() => onSelectIndex && onSelectIndex(i)}
+                  className={`aspect-video rounded-3xl flex flex-col relative cursor-pointer border-2 transition-all duration-300 overflow-hidden ${
+                    isActiveCard
+                      ? isResponse
+                        ? 'bg-amber-950/20 border-amber-500 shadow-[0_0_40px_rgba(245,158,11,0.3)] scale-[1.02] transform z-10'
+                        : 'bg-blue-900/10 border-blue-500 shadow-[0_0_40px_rgba(59,130,246,0.3)] scale-[1.02] transform z-10'
+                      : isResponse
+                        ? 'bg-amber-950/10 border-amber-900/40 hover:border-amber-700/60 hover:scale-[1.01] transform'
+                        : 'bg-neutral-900/40 border-neutral-800 hover:border-neutral-700 hover:scale-[1.01] transform'
+                  } ${selectedIndices.has(i) ? 'border-blue-500/50' : ''}`}
                 >
-                  {selectedIndices.has(i) ? <CheckCircle size={20} /> : <Circle size={20} />}
-                </div>
-              </div>
+                  <div className={`flex-1 w-full flex items-center justify-center overflow-hidden px-4 py-2`}>
+                    <div
+                      className={`font-black text-center leading-tight tracking-tight drop-shadow-2xl w-full`}
+                      style={{
+                        fontSize: '18px',
+                        whiteSpace: 'pre-wrap',
+                        color: isResponse ? '#fcd34d' : '#ffffff',
+                      }}
+                    >
+                      {(slide.content || []).map((line, li) => <div key={li}>{line}</div>)}
+                    </div>
+                  </div>
 
-              {/* Label Row */}
-              <div className="flex justify-between items-center px-4">
-                <div className={`text-[10px] font-black uppercase tracking-[0.3em] transition-colors ${
-                  i === activeIndex || selectedIndices.has(i) ? 'text-blue-400' : 'text-neutral-400'
-                }`}>
-                  {slide.type}
+                  {/* Selection Indicator */}
+                  <div 
+                    onClick={(e) => { e.stopPropagation(); onToggleSelection(i); }}
+                    className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      selectedIndices.has(i) 
+                        ? 'bg-blue-600 text-white scale-110 shadow-lg' 
+                        : 'bg-black/40 text-white/40 hover:bg-black/60 hover:text-white opacity-0 group-hover:opacity-100'
+                    }`}
+                  >
+                    {selectedIndices.has(i) ? <CheckCircle size={20} /> : <Circle size={20} />}
+                  </div>
                 </div>
-                <div className={`text-[10px] font-black ${
-                  i === activeIndex || selectedIndices.has(i) ? 'text-blue-500/80' : 'text-neutral-700'
-                }`}>
-                  SLIDE {i + 1}
+
+                {/* Label Row */}
+                <div className="flex justify-between items-center px-4">
+                  <div className={`text-[10px] font-black uppercase tracking-[0.3em] transition-colors ${
+                    isActiveCard || selectedIndices.has(i)
+                      ? isResponse ? 'text-amber-400' : 'text-blue-400'
+                      : isResponse ? 'text-amber-600/60' : 'text-neutral-400'
+                  }`}>
+                    {isResponse ? '↩ ' : '› '}{slide.type}
+                  </div>
+                  <div className={`text-[10px] font-black ${
+                    isActiveCard || selectedIndices.has(i) ? 'text-blue-500/80' : 'text-neutral-700'
+                  }`}>
+                    SLIDE {i + 1}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

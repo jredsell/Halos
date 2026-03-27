@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Layers, File, Music, Image as ImgIcon, Video, FileText, CheckCircle, Check, Trash2, Sparkles, Settings } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, Plus, Layers, File, Music, Image as ImgIcon, Video, FileText, CheckCircle, Check, Trash2, Sparkles, Settings, BookOpen } from 'lucide-react';
 import BibleModule from './BibleModule';
 import ServiceFlow from './ServiceFlow';
 import { processBibleJson } from '../services/bibleService';
 import ConfirmModal from './ConfirmModal';
 import SettingsView from './SettingsView';
+import { parseLiturgyMarkdown } from '../utils/liturgyParser';
 
 export default function Sidebar({ 
   activeTab, 
@@ -37,6 +38,32 @@ export default function Sidebar({
   const [videoUrl, setVideoUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [isFetchingTitle, setIsFetchingTitle] = useState(false);
+
+  // Liturgy state
+  const [liturgyFiles, setLiturgyFiles] = useState([]);
+  const [liturgyToDelete, setLiturgyToDelete] = useState(null);
+  const [selectedLiturgyFile, setSelectedLiturgyFile] = useState(null);
+
+  const loadLiturgyFiles = useCallback(async () => {
+    if (!libraryHandle) return;
+    try {
+      const dir = await libraryHandle.getDirectoryHandle('Liturgy', { create: true });
+      const files = [];
+      for await (const [name, handle] of dir.entries()) {
+        if (handle.kind === 'file' && name.endsWith('.md')) {
+          files.push({ name, handle });
+        }
+      }
+      files.sort((a, b) => a.name.localeCompare(b.name));
+      setLiturgyFiles(files);
+    } catch (err) {
+      console.warn('Could not read Liturgy folder', err);
+    }
+  }, [libraryHandle]);
+
+  useEffect(() => {
+    if (activeTab === 'Liturgy') loadLiturgyFiles();
+  }, [activeTab, systemTrigger, loadLiturgyFiles]);
   
   // Multi-Source Integrated Search
   const [searchMode, setSearchMode] = useState('local'); // 'local', 'songselect', 'web', 'lyrics-ovh'
@@ -435,6 +462,120 @@ export default function Sidebar({
   // 0. Settings View
   if (activeTab === 'Settings') {
     return <SettingsView roomId={roomId} />;
+  }
+
+  // 0b. Liturgy View
+  if (activeTab === 'Liturgy') {
+    const confirmDeleteLiturgy = async () => {
+      if (!libraryHandle || !liturgyToDelete) return;
+      try {
+        const dir = await libraryHandle.getDirectoryHandle('Liturgy', { create: false });
+        await dir.removeEntry(liturgyToDelete.name);
+        if (onDeleteItem) onDeleteItem(liturgyToDelete.name);
+        setLiturgyToDelete(null);
+        setSelectedLiturgyFile(null);
+        loadLiturgyFiles();
+      } catch (err) {
+        alert('Failed to delete: ' + err.message);
+        setLiturgyToDelete(null);
+      }
+    };
+
+    const handleLiturgySelect = async (file) => {
+      try {
+        const f = await file.handle.getFile();
+        const text = await f.text();
+        const parsed = parseLiturgyMarkdown(text);
+        onSelectItem({
+          type: 'liturgy',
+          id: file.name,
+          filename: file.name,
+          title: parsed.metadata.title || file.name.replace('.md', ''),
+          slides: parsed.slides,
+          rawText: text,
+          fileHandle: file.handle,
+        });
+        setSelectedLiturgyFile(file.name);
+      } catch (err) {
+        console.error('Failed to load liturgy file', err);
+      }
+    };
+
+    return (
+      <div className="flex flex-col h-full w-full gap-4 pt-2">
+        <div className="flex justify-between items-center">
+          <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+            <BookOpen size={14} /> Liturgy Library
+          </div>
+          <button
+            onClick={() => {
+              onSelectItem({ type: 'new_liturgy', id: 'new_liturgy' });
+              setSelectedLiturgyFile(null);
+            }}
+            className="text-[10px] bg-amber-600/20 text-amber-400 border border-amber-500/30 hover:bg-amber-600/40 px-2 py-1 rounded font-bold uppercase tracking-wider transition"
+          >
+            + New
+          </button>
+        </div>
+
+        <AddButton />
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 border-t border-neutral-800/50 pt-3 px-1">
+          {liturgyFiles.length === 0 && (
+            <div className="text-sm font-medium text-neutral-500 italic p-4 text-center bg-neutral-900/50 rounded-xl border border-neutral-800 border-dashed mt-4">
+              No liturgy files yet.<br/>
+              <span className="text-[10px]">Click "+ New" to create one.</span>
+            </div>
+          )}
+          {liturgyFiles
+            .filter(f => f.name.toLowerCase().includes(localQuery.toLowerCase()))
+            .map(file => {
+              const isInService = checkInService(file.name);
+              const isSelected = selectedLiturgyFile === file.name;
+              return (
+                <div
+                  key={file.name}
+                  onClick={() => handleLiturgySelect(file)}
+                  className={`p-3 rounded-xl cursor-pointer border transition flex justify-between items-center ${
+                    isSelected
+                      ? 'bg-amber-950/30 border-amber-500/30'
+                      : isInService
+                        ? 'bg-green-950/20 border-green-500/30'
+                        : 'bg-neutral-800/40 border-transparent hover:border-neutral-600 hover:bg-neutral-700/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 truncate flex-1">
+                    <BookOpen size={14} className={isSelected ? 'text-amber-400' : 'text-neutral-500'} />
+                    <div className="font-semibold text-xs text-neutral-300 truncate">
+                      {file.name.replace('.md', '')}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isInService && <CheckCircle size={14} className="text-green-500 flex-shrink-0" />}
+                    <div
+                      onClick={(e) => { e.stopPropagation(); setLiturgyToDelete(file); }}
+                      className="p-1.5 hover:bg-red-500/20 text-neutral-500 hover:text-red-400 rounded-lg transition-colors"
+                      title="Delete Liturgy File"
+                    >
+                      <Trash2 size={14} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          }
+        </div>
+
+        <ConfirmModal
+          isOpen={!!liturgyToDelete}
+          title="Delete Liturgy File?"
+          message={`Are you sure you want to permanently delete "${liturgyToDelete?.name?.replace('.md', '')}"?`}
+          onConfirm={confirmDeleteLiturgy}
+          onCancel={() => setLiturgyToDelete(null)}
+          confirmText="Delete File"
+        />
+      </div>
+    );
   }
 
   // 1. Service View
