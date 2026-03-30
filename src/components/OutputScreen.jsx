@@ -116,9 +116,9 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        urlObj.searchParams.set('origin', window.location.origin);
 
        // For master (projector/preview): respect the item's autoPlay setting.
-       // For followers (network view): always autoplay so they stay in sync.
+       // For followers (network view): autoplay only if the master is actively playing.
        if (!isMaster) {
-          urlObj.searchParams.set('autoplay', '1');
+          urlObj.searchParams.set('autoplay', payload?.isPaused ? '0' : '1');
        } else {
           urlObj.searchParams.set('autoplay', payload.itemAutoPlay ? '1' : '0');
        }
@@ -139,7 +139,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
     const sendVimeoCommand = (method, value = "") => {
        if (!iframeRef.current?.contentWindow) return;
-       iframeRef.current.contentWindow.postMessage({ method, value }, 'https://player.vimeo.com');
+       iframeRef.current.contentWindow.postMessage(JSON.stringify({ method, value }), '*');
     };
 
     // forceUnmute: removes the forced-mute that browsers apply at startup.
@@ -176,7 +176,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     useEffect(() => { statusHandlerRef.current = onStatusUpdate; }, [onStatusUpdate]);
 
     useEffect(() => {
-       if (!isMaster || !payload?.activeMediaUrl) return;
+       if (!payload?.activeMediaUrl) return;
        if (!payload.isYouTube && !payload.isVimeo) return;
 
        const handleMessage = (event) => {
@@ -188,11 +188,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                    const time = info.currentTime ?? followerTimeRef.current;
                    const duration = info.duration ?? followerDurationRef.current;
                    const paused = info.playerState !== undefined ? (info.playerState !== 1 && info.playerState !== 3) : followerPausedRef.current;
+                   followerPausedRef.current = paused;
                    if (duration > 0) {
                       statusHandlerRef.current?.({ time, duration, paused, ts: Date.now() });
                       followerTimeRef.current = time;
                       followerDurationRef.current = duration;
-                      followerPausedRef.current = paused;
                    }
                 }
              }
@@ -280,12 +280,18 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (payload?.isYouTube) {
           if (command === 'play') sendIframeCommand('playVideo');
           if (command === 'pause') sendIframeCommand('pauseVideo');
-          if (command === 'seek') sendIframeCommand('seekTo', [value, true]);
+          if (command === 'seek') {
+             sendIframeCommand('seekTo', [value, true]);
+             if (followerPausedRef.current) setTimeout(() => sendIframeCommand('pauseVideo'), 300);
+          }
           if (command === 'volume') sendIframeCommand('setVolume', [value * 100]);
        } else if (payload?.isVimeo) {
           if (command === 'play') sendVimeoCommand('play');
           if (command === 'pause') sendVimeoCommand('pause');
-          if (command === 'seek') sendVimeoCommand('setCurrentTime', value);
+          if (command === 'seek') {
+             sendVimeoCommand('setCurrentTime', value);
+             if (followerPausedRef.current) setTimeout(() => sendVimeoCommand('pause'), 300);
+          }
           if (command === 'volume') sendVimeoCommand('setVolume', value);
        }
 
@@ -303,7 +309,10 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     useEffect(() => {
        if (isMaster || !payload) return;
        const { currentTime, isPaused, currentTimeTs } = payload;
-       let targetTime = currentTime + ((Date.now() - (currentTimeTs || Date.now())) / 1000);
+       let targetTime = currentTime;
+       if (!isPaused) {
+           targetTime += ((Date.now() - (currentTimeTs || Date.now())) / 1000);
+       }
 
        if (payload.isYouTube || payload.isVimeo) {
           const diff = Math.abs(followerTimeRef.current - targetTime);
@@ -312,19 +321,24 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
              else sendVimeoCommand('setCurrentTime', targetTime);
              followerTimeRef.current = targetTime;
           }
-          if (isPaused !== lastSentPauseRef.current) {
-             lastSentPauseRef.current = isPaused;
-             if (payload.isYouTube) sendIframeCommand(isPaused ? 'pauseVideo' : 'playVideo');
-             else sendVimeoCommand(isPaused ? 'pause' : 'play');
+          if (isPaused && !followerPausedRef.current) {
+             if (payload.isYouTube) sendIframeCommand('pauseVideo');
+             else sendVimeoCommand('pause');
+             followerPausedRef.current = true;
+          } else if (!isPaused && followerPausedRef.current) {
+             if (payload.isYouTube) sendIframeCommand('playVideo');
+             else sendVimeoCommand('play');
+             followerPausedRef.current = false;
           }
        }
        if (videoRef.current) {
           const diff = Math.abs(videoRef.current.currentTime - targetTime);
           if (diff > 0.5) videoRef.current.currentTime = targetTime;
-          if (isPaused !== lastSentPauseRef.current) {
-             lastSentPauseRef.current = isPaused;
-             if (isPaused) videoRef.current.pause();
-             else videoRef.current.play().catch(() => {});
+          
+          if (isPaused && !videoRef.current.paused) {
+             videoRef.current.pause();
+          } else if (!isPaused && videoRef.current.paused) {
+             videoRef.current.play().catch(() => {});
           }
        }
     }, [payload?.currentTime, payload?.isPaused, isMaster]);
