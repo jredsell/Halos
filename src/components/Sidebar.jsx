@@ -485,7 +485,7 @@ export default function Sidebar({
       try {
         const f = await file.handle.getFile();
         const text = await f.text();
-        const parsed = parseLiturgyMarkdown(text);
+        const parsed = parseLiturgyMarkdown(text, 4);
         onSelectItem({
           type: 'liturgy',
           id: file.name,

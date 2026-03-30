@@ -13,18 +13,9 @@ function AutoFitLyrics({ lines, isMaster = false, isLiveBroadcast = false, isCle
   useEffect(() => {
     const fit = () => {
       const container = containerRef.current;
-      const text = textRef.current;
-      if (!container || !text) return;
-      const maxW = container.clientWidth * (isHighImpact ? 0.8 : 0.95);
-      const maxH = container.clientHeight * (isHighImpact ? 0.8 : 0.9);
-      let lo = 8, hi = Math.max(8, container.clientHeight), best = 8;
-      while (lo <= hi) {
-        const mid = Math.floor((lo + hi) / 2);
-        text.style.fontSize = mid + 'px';
-        if (text.scrollWidth <= maxW && text.scrollHeight <= maxH) { best = mid; lo = mid + 1; }
-        else { hi = mid - 1; }
-      }
-      setFontSize(best);
+      if (!container) return;
+      const targetSize = Math.max(12, Math.round(container.clientHeight * 0.085));
+      setFontSize(targetSize);
     };
     const ro = new ResizeObserver(fit);
     if (containerRef.current) ro.observe(containerRef.current);
@@ -33,8 +24,8 @@ function AutoFitLyrics({ lines, isMaster = false, isLiveBroadcast = false, isCle
   }, [lines, isHighImpact]);
   return (
     <div ref={containerRef} className={`absolute inset-0 flex items-center justify-center overflow-hidden transition-opacity duration-300 ${paddingClass} ${opacityClass}`}>
-      <div ref={textRef} className="font-black text-white text-center leading-[1.2] drop-shadow-[0_4px_48px_rgba(0,0,0,1)] antialiased w-max" style={{ fontSize: fontSize + 'px' }}>
-        {lines.map((line, i) => <div key={i} className="whitespace-nowrap">{line}</div>)}
+      <div ref={textRef} className="font-black text-white text-center leading-[1.3] drop-shadow-[0_4px_48px_rgba(0,0,0,1)] antialiased w-full text-balance whitespace-pre-wrap" style={{ fontSize: fontSize + 'px', wordBreak: 'break-word' }}>
+        {lines.map((line, i) => <div key={i}>{line}</div>)}
       </div>
     </div>
   );
@@ -56,22 +47,9 @@ function AutoFitLiturgy({ lines, liturgyType = 'speaker', alignment = 'center', 
   useEffect(() => {
     const fit = () => {
       const container = containerRef.current;
-      const text = textRef.current;
-      if (!container || !text) return;
-      const maxW = container.clientWidth * (isHighImpact ? 0.8 : 0.95);
-      const maxH = container.clientHeight * (isHighImpact ? 0.8 : 0.9);
-      
-      // TARGET UNIFORM SIZE: 8% of screen height (approx 80px on 1080p)
-      const targetSize = Math.round(container.clientHeight * 0.085);
-      
-      let lo = 8, hi = targetSize, best = targetSize;
-      while (lo <= hi) {
-        const mid = Math.floor((lo + hi) / 2);
-        text.style.fontSize = mid + 'px';
-        if (text.scrollWidth <= maxW && text.scrollHeight <= maxH) { best = mid; lo = mid + 1; }
-        else { hi = mid - 1; }
-      }
-      setFontSize(best);
+      if (!container) return;
+      const targetSize = Math.max(12, Math.round(container.clientHeight * 0.085));
+      setFontSize(targetSize);
     };
     const ro = new ResizeObserver(fit);
     if (containerRef.current) ro.observe(containerRef.current);
@@ -83,16 +61,17 @@ function AutoFitLiturgy({ lines, liturgyType = 'speaker', alignment = 'center', 
     <div ref={containerRef} className={`absolute inset-0 flex flex-col ${flexAlign} justify-center overflow-hidden transition-opacity duration-300 ${paddingClass} ${opacityClass}`}>
       <div
         ref={textRef}
-        className={`font-black ${textAlign} leading-[1.2] drop-shadow-[0_4px_48px_rgba(0,0,0,1)] antialiased w-max transition-colors duration-300`}
+        className={`font-black ${textAlign} leading-[1.3] drop-shadow-[0_4px_48px_rgba(0,0,0,1)] antialiased w-full text-balance whitespace-pre-wrap transition-colors duration-300`}
         style={{
           fontSize: fontSize + 'px',
+          wordBreak: 'break-word',
           color: isResponse ? '#fcd34d' : '#ffffff',
           textShadow: isResponse
             ? '0 0 60px rgba(251,191,36,0.4), 0 4px 48px rgba(0,0,0,1)'
             : '0 4px 48px rgba(0,0,0,1)',
         }}
       >
-        {lines.map((line, i) => <div key={i} className="whitespace-nowrap">{line}</div>)}
+        {lines.map((line, i) => <div key={i}>{line}</div>)}
       </div>
     </div>
   );
