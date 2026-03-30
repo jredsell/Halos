@@ -4,9 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 
 // Simple in-memory broadcast hub with Room ID sharding
 const halosBroadcastPlugin = () => {
-  const roomStates = new Map(); // roomId -> currentLiveState
-  const roomMedia = new Map();  // roomId -> { data: Buffer, type: string }
-  
   return {
     name: 'halos-broadcast',
     configureServer(server) {
@@ -15,76 +12,6 @@ const halosBroadcastPlugin = () => {
         const url = urlObj.pathname;
         const roomId = urlObj.searchParams.get('room') || 'default';
         
-        // State Endpoint
-        if (url === '/api/live') {
-          if (req.method === 'POST') {
-            let body = '';
-            req.on('data', chunk => body += chunk);
-            req.on('end', () => {
-              try {
-                roomStates.set(roomId, JSON.parse(body));
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ success: true, room: roomId }));
-              } catch (e) {
-                res.statusCode = 400;
-                res.end(JSON.stringify({ error: 'Invalid JSON' }));
-              }
-            });
-            return;
-          } else if (req.method === 'GET') {
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify(roomStates.get(roomId) || {}));
-            return;
-          }
-        }
-
-        // Media Proxy Endpoint (for Blobs)
-        if (url === '/api/media') {
-           if (req.method === 'POST') {
-             const chunks = [];
-             req.on('data', chunk => chunks.push(chunk));
-             req.on('end', () => {
-               roomMedia.set(roomId, {
-                  data: Buffer.concat(chunks),
-                  type: req.headers['content-type'] || 'image/png'
-               });
-               res.end(JSON.stringify({ success: true, room: roomId }));
-             });
-             return;
-           } else if (req.method === 'GET') {
-             const media = roomMedia.get(roomId);
-             if (media) {
-               const range = req.headers.range;
-               if (range) {
-                 const parts = range.replace(/bytes=/, "").split("-");
-                 const partialstart = parts[0];
-                 const partialend = parts[1];
-                 
-                 const start = parseInt(partialstart, 10);
-                 const end = partialend ? parseInt(partialend, 10) : media.data.length - 1;
-                 const chunksize = (end - start) + 1;
-                 
-                 res.writeHead(206, {
-                   'Content-Range': `bytes ${start}-${end}/${media.data.length}`,
-                   'Accept-Ranges': 'bytes',
-                   'Content-Length': chunksize,
-                   'Content-Type': media.type,
-                 });
-                 res.end(media.data.slice(start, end + 1));
-               } else {
-                 res.writeHead(200, {
-                   'Content-Length': media.data.length,
-                   'Content-Type': media.type,
-                 });
-                 res.end(media.data);
-               }
-             } else {
-               res.statusCode = 404;
-               res.end();
-             }
-             return;
-           }
-        }
         // SongSelect Search Proxy
         if (url === '/api/songselect-search') {
            const urlObj = new URL(req.url, `http://${req.headers.host}`);

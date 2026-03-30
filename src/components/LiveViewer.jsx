@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Peer } from 'peerjs';
 import OutputScreen from './OutputScreen';
 
 const LiveViewer = () => {
@@ -6,27 +7,62 @@ const LiveViewer = () => {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
 
+  const mediaMapCache = useRef({});
+
   useEffect(() => {
-    let lastPayloadStr = "";
     const urlParams = new URLSearchParams(window.location.search);
     const roomId = urlParams.get('room');
+    if (!roomId) return;
 
-    const fetchUpdate = () => {
-      fetch(`/api/live${roomId ? `?room=${roomId}` : ''}`)
-        .then(res => res.json())
-        .then(data => {
-          const currentStr = JSON.stringify(data || {});
-          if (currentStr !== lastPayloadStr) {
-            setNetworkPayload(data || {});
-            lastPayloadStr = currentStr;
+    let peer = null;
+
+    try {
+      peer = new Peer();
+      
+      peer.on('open', () => {
+        const conn = peer.connect('halos-' + roomId);
+        
+        conn.on('data', (data) => {
+          if (data?.type === 'state') {
+             const payload = data.payload;
+             // Remap blob references matching cache
+             if (payload.logoUrl?.startsWith('blob:') && mediaMapCache.current[payload.logoUrl]) {
+                payload.logoUrl = mediaMapCache.current[payload.logoUrl];
+             }
+             if (payload.activeMediaUrl?.startsWith('blob:') && mediaMapCache.current[payload.activeMediaUrl]) {
+                payload.activeMediaUrl = mediaMapCache.current[payload.activeMediaUrl];
+             }
+             if (payload.mediaType === 'image' || payload.mediaType === 'slide_deck') {
+                if (payload.activeSlide && Array.isArray(payload.activeSlide)) {
+                   payload.activeSlide = payload.activeSlide.map(item => {
+                      if (item.url?.startsWith('blob:') && mediaMapCache.current[item.url]) {
+                         return { ...item, url: mediaMapCache.current[item.url] };
+                      }
+                      return item;
+                   });
+                }
+             }
+             
+             setNetworkPayload(payload);
+          } else if (data?.type === 'media') {
+             // Reconstruct isolated binary Buffer to local memory blob map
+             const blob = new Blob([data.data], { type: data.mime || 'application/octet-stream' });
+             const localUrl = URL.createObjectURL(blob);
+             mediaMapCache.current[data.id] = localUrl;
           }
-        })
-        .catch(() => {});
+        });
+        
+        conn.on('close', () => {
+           console.log("Master WebRTC connection closed");
+        });
+      });
+    } catch (e) {
+      console.error(e);
+    }
+    
+    return () => {
+       if (peer) peer.destroy();
     };
-
-    fetchUpdate();
-    const interval = setInterval(fetchUpdate, 300);
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -56,8 +92,8 @@ const LiveViewer = () => {
           isLiveBroadcast={true} 
        />
        
-       <div className="fixed bottom-4 right-6 text-[10px] font-black text-white/10 uppercase tracking-widest pointer-events-none z-50">
-          Halos Live View • Same-Network Sync
+       <div className="fixed bottom-4 right-6 text-[10px] font-black text-white/50 uppercase tracking-widest pointer-events-none z-50">
+          Halos Live View • WebRTC Secure Tunnel
        </div>
     </div>
   );

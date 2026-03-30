@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Peer } from 'peerjs'
 import { ExternalLink } from 'lucide-react'
 import FileSystemSetup from './components/FileSystemSetup'
 import { getStoredDirectoryHandle } from './utils/fileSystem'
@@ -24,6 +25,9 @@ function App() {
 
   const [libraryHandle, setLibraryHandle] = useState(null)
   const projectorWindowRef = useRef(null);
+  const peerRef = useRef(null);
+  const connectionsRef = useRef([]);
+  const livePayloadRef = useRef(null);
   
   // Routing State
   const [isProjectorView, setIsProjectorView] = useState(false);
@@ -135,6 +139,42 @@ function App() {
     }
   }, []);
 
+  // WebRTC PeerJS Master Initialization
+  useEffect(() => {
+    if (isProjectorView || isNetworkView || !roomId) return;
+    
+    let peer = null;
+    try {
+      peer = new Peer('halos-' + roomId);
+      peerRef.current = peer;
+      
+      peer.on('connection', (conn) => {
+        connectionsRef.current.push(conn);
+        
+        conn.on('close', () => {
+          connectionsRef.current = connectionsRef.current.filter(c => c !== conn);
+        });
+        
+        // Immediately sync the latest state to any newly connecting follower
+        conn.on('open', () => {
+           if (livePayloadRef.current) {
+              conn.send({ type: 'state', payload: livePayloadRef.current });
+           }
+        });
+      });
+      
+      peer.on('error', (err) => {
+         console.error('PeerJS Master Error:', err);
+      });
+    } catch (e) {
+      console.error(e);
+    }
+    
+    return () => {
+       if (peer) peer.destroy();
+    };
+  }, [roomId, isProjectorView, isNetworkView]);
+
   // Live Re-sharding: Automatically re-shard songs when the linesPerSlide setting changes
   useEffect(() => {
     if (!isLoaded) return;
@@ -177,13 +217,21 @@ function App() {
         lastUploadedRef.current = targetUrl;
         setIsSyncingMedia(true);
         try {
+          if (liveItem?.type === 'video') {
+             // Skip heavy local video files from pure WebRTC Web Sync to prevent memory limits
+             setSyncedMediaUrl(targetUrl);
+             setIsSyncingMedia(false);
+             return;
+          }
+
           const res = await fetch(targetUrl);
           const blob = await res.blob();
-          await fetch(`/api/media?room=${roomId}`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': blob.type },
-            body: blob 
+          const buffer = await blob.arrayBuffer();
+          
+          connectionsRef.current.forEach(conn => {
+              conn.send({ type: 'media', id: targetUrl, data: buffer, mime: blob.type });
           });
+          
           setSyncedMediaUrl(targetUrl);
         } catch (e) {}
         setIsSyncingMedia(false);
@@ -261,32 +309,24 @@ function App() {
 
     // Broadcast to network hub (JSON only)
     const broadcast = async () => {
-      // For network broadcast, replace BLOB URLs with the proxy endpoint using stable blob identifiers.
+      // For network broadcast, retain original BLOB URL strings to act as unique cache keys on the follower.
       const networkPayload = { ...payload };
       if (networkPayload.logoUrl?.startsWith('blob:')) {
          if (payload.logoUrl !== syncedMediaUrl) networkPayload.logoUrl = null;
-         else networkPayload.logoUrl = `/api/media?room=${roomId}&v=${payload.logoUrl.slice(-12)}`;
       }
       if (networkPayload.activeMediaUrl?.startsWith('blob:')) {
          if (payload.activeMediaUrl !== syncedMediaUrl) networkPayload.activeMediaUrl = null;
-         else networkPayload.activeMediaUrl = `/api/media?room=${roomId}&v=${payload.activeMediaUrl.slice(-12)}`;
       }
       
       networkPayload.isNetworkViewer = true; // Mark specifically for phone viewers
-      if (!roomId) return;
+      livePayloadRef.current = networkPayload;
 
-      fetch(`/api/live?room=${roomId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(networkPayload)
-      }).catch(() => {});
+      connectionsRef.current.forEach(conn => {
+         conn.send({ type: 'state', payload: networkPayload });
+      });
     };
 
     broadcast();
-    
-    // Heartbeat every 5 seconds
-    const interval = setInterval(broadcast, 5000);
-    return () => clearInterval(interval);
   }, [isLive, isBlackScreen, isShowLogo, isClearText, logoUrl, liveItem, liveSlideIndex, linesPerSlide, playbackStatus, slideshowInterval, syncedMediaUrl, churchName]);
 
   useEffect(() => {
