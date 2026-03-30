@@ -176,7 +176,7 @@ const halosBroadcastPlugin = () => {
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/Halos/',
+  base: '/halos/',
   server: {
     host: true, // Expose to local network automatically
   },
