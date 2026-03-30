@@ -1,7 +1,7 @@
-import { Share2, Copy, Check } from 'lucide-react';
+import { Share2, Copy, Check, Building2 } from 'lucide-react';
 import { useState } from 'react';
 
-export default function SettingsView({ roomId }) {
+export default function SettingsView({ roomId, churchName, setChurchName }) {
   const [copied, setCopied] = useState(false);
   const base = window.location.origin + window.location.pathname;
   const liveUrl = `${base}${base.endsWith('/') ? '' : '/'}?network=true${roomId ? `&room=${roomId}` : ''}`;
@@ -11,6 +11,13 @@ export default function SettingsView({ roomId }) {
     navigator.clipboard.writeText(liveUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleNameBlur = async () => {
+    try {
+      const { set } = await import('idb-keyval');
+      await set('halos_church_name', churchName);
+    } catch(e) {}
   };
 
   return (
@@ -30,6 +37,27 @@ export default function SettingsView({ roomId }) {
                 {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} className="text-neutral-600 group-hover:text-blue-400 transition-colors" />}
             </div>
             {copied && <div className="text-[9px] text-green-500 font-bold mt-1 animate-pulse">Copied to clipboard!</div>}
+        </div>
+      </div>
+
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 flex flex-col gap-4 shadow-xl mt-4">
+        <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+           <Building2 size={14} className="text-blue-400" /> Organization Profile
+        </div>
+        
+        <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Church / Organization Name</label>
+            <input 
+               type="text" 
+               value={churchName || ""} 
+               onChange={(e) => setChurchName(e.target.value)}
+               onBlur={handleNameBlur}
+               placeholder="e.g. Grace Fellowship"
+               className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
+            />
+            <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
+               This name will be displayed gracefully on the network waiting screens and the main projector output when no media is playing.
+            </p>
         </div>
       </div>
 

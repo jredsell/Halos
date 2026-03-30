@@ -44,6 +44,7 @@ function App() {
   const [slideshowInterval, setSlideshowInterval] = useState(5);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showOfflineConfirm, setShowOfflineConfirm] = useState(false);
 
   // Global Projection State
   const [isLive, setIsLive] = useState(false);
@@ -53,6 +54,7 @@ function App() {
   const [logoUrl, setLogoUrl] = useState(null);
   const [livePayload, setLivePayload] = useState(null);
   const [playbackStatus, setPlaybackStatus] = useState({ time: 0, duration: 0, paused: true });
+  const [churchName, setChurchName] = useState("HALOS");
 
   // System Hooks
   const [systemTrigger, refreshLibrary] = useFileSystemWatcher(libraryHandle);
@@ -82,6 +84,9 @@ function App() {
         setRoomId(currentRoom);
         
         // 1. Initial Load from DB (Fast, no permissions)
+        const savedChurch = await get('halos_church_name');
+        if (savedChurch) setChurchName(savedChurch);
+
         const savedService = await get('halos_service_items');
         if (savedService && Array.isArray(savedService)) {
            setServiceItems(savedService);
@@ -204,7 +209,8 @@ function App() {
        duration: playbackStatus.duration,
        isPaused: playbackStatus.paused,
        slideshowInterval: slideshowInterval,
-       itemAutoPlay: liveItem?.autoPlay || false
+       itemAutoPlay: liveItem?.autoPlay || false,
+       churchName: churchName
     };
 
     // Populate content if we have a LIVE selection (Locked to Service Flow)
@@ -281,7 +287,7 @@ function App() {
     // Heartbeat every 5 seconds
     const interval = setInterval(broadcast, 5000);
     return () => clearInterval(interval);
-  }, [isLive, isBlackScreen, isShowLogo, isClearText, logoUrl, liveItem, liveSlideIndex, linesPerSlide, playbackStatus, slideshowInterval, syncedMediaUrl]);
+  }, [isLive, isBlackScreen, isShowLogo, isClearText, logoUrl, liveItem, liveSlideIndex, linesPerSlide, playbackStatus, slideshowInterval, syncedMediaUrl, churchName]);
 
   useEffect(() => {
     const bc = new BroadcastChannel('halos-projector-hub');
@@ -330,7 +336,7 @@ function App() {
     fetchLive();
     const interval = setInterval(fetchLive, 2000);
     return () => clearInterval(interval);
-  }, [isNetworkView]);
+  }, [isNetworkView, roomId]);
 
   const isInitialLoad = useRef(true);
 
@@ -351,6 +357,13 @@ function App() {
 
       return () => clearTimeout(timer);
   }, [serviceItems, isLoaded]);
+
+  useEffect(() => {
+      if (!isLoaded || isInitialLoad.current) return;
+      import('idb-keyval').then(({ set }) => {
+         set('halos_church_name', churchName);
+      });
+  }, [churchName, isLoaded]);
 
   // Slideshow Autoplay Engine
   useEffect(() => {
@@ -665,9 +678,14 @@ function App() {
         projectorWindowRef.current = window.open('?projector=true', 'HalosProjector', 'menubar=no,location=no,resizable=yes,scrollbars=no,status=no,width=1280,height=720');
         setIsLive(true);
      } else {
-        if (projectorWindowRef.current) projectorWindowRef.current.close();
-        setIsLive(false);
+        setShowOfflineConfirm(true);
      }
+  };
+
+  const executeGoOffline = () => {
+     if (projectorWindowRef.current) projectorWindowRef.current.close();
+     setIsLive(false);
+     setShowOfflineConfirm(false);
   };
 
   return (
@@ -740,6 +758,8 @@ function App() {
                    next.delete(id);
                    return next;
                  })}
+                 churchName={churchName}
+                 setChurchName={setChurchName}
               />
             </div>
             
@@ -888,7 +908,7 @@ function App() {
             </div>
           </main>
           
-          <ConfirmModal 
+         <ConfirmModal 
              isOpen={showClearConfirm}
              title="Clear Service Flow?"
              message="This will permanently remove all items from your current service. This action cannot be undone."
@@ -900,6 +920,14 @@ function App() {
               }}
              onCancel={() => setShowClearConfirm(false)}
              confirmText="Clear Everything"
+          />
+          <ConfirmModal 
+             isOpen={showOfflineConfirm}
+             title="End Live Broadcast?"
+             message="This will close the main projector window and disconnect all network viewers immediately."
+             onConfirm={executeGoOffline}
+             onCancel={() => setShowOfflineConfirm(false)}
+             confirmText="End Broadcast"
           />
       </div>
     </DragDropZone>

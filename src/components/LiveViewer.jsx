@@ -8,9 +8,11 @@ const LiveViewer = () => {
 
   useEffect(() => {
     let lastPayloadStr = "";
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room');
 
     const fetchUpdate = () => {
-      fetch('/api/live')
+      fetch(`/api/live${roomId ? `?room=${roomId}` : ''}`)
         .then(res => res.json())
         .then(data => {
           const currentStr = JSON.stringify(data || {});

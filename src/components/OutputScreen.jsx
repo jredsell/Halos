@@ -343,15 +343,40 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        }
     }, [payload?.currentTime, payload?.isPaused, isMaster]);
 
-    const isNetworkViewer = payload?.isNetworkViewer;
-    const isDashboardPreview = !isMaster && !isNetworkViewer;
-    const shouldShowLiveContent = payload?.isLive || isDashboardPreview || isLiveBroadcast || muteAudio || payload?.isBlackScreen || payload?.isShowLogo;
+    const isFollowerWindow = !isMaster;
+    const forceStandby = isFollowerWindow && !payload?.isLive;
+    const hasMedia = payload?.activeMediaUrl || (payload?.activeSlide && payload?.activeSlide.length > 0);
+    const isStandby = !payload || forceStandby || (!hasMedia && !payload?.isBlackScreen && !payload?.isShowLogo);
 
     const renderContent = () => {
-        if (!payload || !shouldShowLiveContent) {
+        if (isStandby) {
            return (
-             <div className="flex flex-col items-center justify-center text-center w-full h-full bg-black">
-                <h1 className="text-[12cqw] font-black tracking-[0.2em] text-white uppercase relative z-10">Halos</h1>
+             <div className="flex flex-col items-center justify-center text-center w-full h-full bg-gradient-to-b from-neutral-950 to-black @container relative overflow-hidden">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05)_0,transparent_40%)] animate-[spin_60s_linear_infinite]"></div>
+                
+                {/* Connection Status Badge */}
+                <div className="absolute top-[4cqh] right-[4cqw] flex items-center gap-[1cqw] bg-white/5 border border-white/10 px-[2cqw] py-[1cqh] rounded-full backdrop-blur-md z-20">
+                   <div className="w-[1cqw] h-[1cqw] max-w-2 max-h-2 rounded-full bg-green-500 animate-pulse"></div>
+                   <span className="text-white/70 text-[min(1.5cqw,2cqh)] font-bold tracking-widest uppercase truncate max-w-[40cqw]">Connected to {payload?.churchName || "Server"}</span>
+                </div>
+
+                {/* HALOS Logo/Watermark */}
+                <div className="absolute bottom-[4cqh] flex flex-col items-center opacity-30 z-20">
+                   <span className="text-[min(2cqw,3cqh)] font-black tracking-[0.4em] text-white uppercase drop-shadow-lg">HALOS</span>
+                   <span className="text-[min(1cqw,1.5cqh)] font-bold tracking-widest text-white/70 uppercase mt-1">Presentation System</span>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center w-[85%]">
+                    <h1 className="text-[min(10cqw,15cqh)] font-black tracking-[0.15em] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 uppercase drop-shadow-2xl leading-[1.1] text-balance">
+                       {payload?.churchName || "STANDBY"}
+                    </h1>
+                    {payload?.churchName && (
+                        <div className="flex flex-col items-center mt-[4cqh]">
+                            <div className="h-[2px] w-[12cqw] bg-blue-500/40 rounded-full mb-[3cqh]"></div>
+                            <span className="text-white/50 text-[min(2cqw,3cqh)] font-bold tracking-[0.3em] uppercase">Ready for broadcast</span>
+                        </div>
+                    )}
+                </div>
              </div>
            );
         }

@@ -28,7 +28,9 @@ export default function Sidebar({
   playedItems,
   onResetPlayed,
   onResetItemPlayed,
-  roomId
+  roomId,
+  churchName,
+  setChurchName
 }) {
   const [localQuery, setLocalQuery] = useState('');
   const [showAdded, setShowAdded] = useState(false);
@@ -461,7 +463,7 @@ export default function Sidebar({
 
   // 0. Settings View
   if (activeTab === 'Settings') {
-    return <SettingsView roomId={roomId} />;
+    return <SettingsView roomId={roomId} churchName={churchName} setChurchName={setChurchName} />;
   }
 
   // 0b. Liturgy View

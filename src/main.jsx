@@ -7,7 +7,7 @@ import './index.css'
 
 // Hard Route Controller
 const isProjector = window.location.search.includes('projector=true');
-const isLiveView = window.location.search.includes('view=live');
+const isLiveView = window.location.search.includes('view=live') || window.location.search.includes('network=true');
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
