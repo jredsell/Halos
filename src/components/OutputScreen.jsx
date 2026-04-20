@@ -193,12 +193,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
                 const info = data.info || data.data;
                 if ((data.event === 'infoDelivery' || data.event === 'initialDelivery' || data.event === 'onStateChange') && info) {
-                   isYouTubeListening = true;
-                   
-                   if ((data.event === 'initialDelivery' || data.event === 'infoDelivery') && hasInteractedRef.current && isMaster && !muteAudio) {
+                   if (!isYouTubeListening && (data.event === 'initialDelivery' || data.event === 'infoDelivery') && hasInteractedRef.current && isMaster && !muteAudio) {
                       sendIframeCommand('unMute');
                       sendIframeCommand('setVolume', [100]);
                    }
+                   isYouTubeListening = true;
 
                    const time = info.currentTime ?? followerTimeRef.current;
                    const duration = info.duration ?? followerDurationRef.current;

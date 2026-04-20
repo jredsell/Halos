@@ -610,7 +610,7 @@ function App() {
        if (willAutoPlay) {
            setTimeout(() => {
                const bc = new BroadcastChannel('halos-projector-hub');
-               bc.postMessage({ type: 'playback', command: 'play', source: 'dashboard-ui', isYoutube: itemToView.isYouTube, isVimeo: itemToView.isVimeo, ts: Date.now() });
+               bc.postMessage({ type: 'playback', command: 'play', source: 'system', isYoutube: itemToView.isYouTube, isVimeo: itemToView.isVimeo, ts: Date.now() });
                bc.close();
            }, 200); // Buffer element mounting sequence inside the Projector DOM
        }
