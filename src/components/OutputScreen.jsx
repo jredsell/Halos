@@ -40,6 +40,7 @@ function AutoFitLiturgy({ lines, liturgyType = 'speaker', alignment = 'center', 
   const paddingClass = isHighImpact ? "px-[10%] py-[10%]" : "p-4";
   const opacityClass = isClearText ? "opacity-0" : "opacity-100";
   const isResponse = liturgyType === 'response';
+  const isCandidate = liturgyType === 'candidate';
   
   const textAlign = alignment === 'left' ? 'text-left' : alignment === 'right' ? 'text-right' : 'text-center';
   const flexAlign = alignment === 'left' ? 'items-start' : alignment === 'right' ? 'items-end' : 'items-center';
@@ -65,8 +66,10 @@ function AutoFitLiturgy({ lines, liturgyType = 'speaker', alignment = 'center', 
         style={{
           fontSize: fontSize + 'px',
           wordBreak: 'break-word',
-          color: isResponse ? '#fcd34d' : '#ffffff',
-          textShadow: isResponse
+          color: isCandidate ? '#4ade80' : isResponse ? '#fcd34d' : '#ffffff',
+          textShadow: isCandidate
+            ? '0 0 60px rgba(74,222,128,0.4), 0 4px 48px rgba(0,0,0,1)'
+            : isResponse
             ? '0 0 60px rgba(251,191,36,0.4), 0 4px 48px rgba(0,0,0,1)'
             : '0 4px 48px rgba(0,0,0,1)',
         }}
@@ -147,7 +150,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     // Called when the user (or a remote play command) triggers playback.
     const forceUnmute = () => {
        setHasInteracted(true);
-       if (muteAudio) return; // Dashboard preview stays silent
+       if (muteAudio || !isMaster) return; // Only master can unmute
        
        if (payload?.isYouTube) {
           sendIframeCommand('mute');
@@ -302,7 +305,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
              if (followerPausedRef.current) setTimeout(() => sendIframeCommand('pauseVideo'), 300);
           }
           if (command === 'volume') {
-             if (payload?.isNetworkViewer) return;
+             if (!isMaster) return; // Never unmute followers
              sendIframeCommand('unMute');
              sendIframeCommand('setVolume', [value * 100]);
           }
@@ -314,7 +317,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
              if (followerPausedRef.current) setTimeout(() => sendVimeoCommand('pause'), 300);
           }
           if (command === 'volume') {
-             if (payload?.isNetworkViewer) return;
+             if (!isMaster) return; // Never unmute followers
              sendVimeoCommand('setMuted', value === 0);
              sendVimeoCommand('setVolume', value);
           }
@@ -322,10 +325,13 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
        if (videoRef.current) {
           const v = videoRef.current;
-          if (command === 'play') { v.muted = false; v.volume = 1; v.play().catch(() => {}); }
+          if (command === 'play') { 
+              if (isMaster) { v.muted = false; v.volume = 1; }
+              v.play().catch(() => {}); 
+          }
           if (command === 'pause') v.pause();
           if (command === 'seek') v.currentTime = value;
-          if (command === 'volume') { v.volume = value; v.muted = (value === 0); }
+          if (command === 'volume') { if (isMaster) { v.volume = value; v.muted = (value === 0); } }
        }
        setTimeout(() => { isMutingReports.current = false; }, 300);
     }, [remoteCommand, isMaster, payload?.isYouTube, payload?.isVimeo]);

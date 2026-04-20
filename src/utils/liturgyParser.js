@@ -32,10 +32,10 @@ export function parseLiturgyMarkdown(rawText, linesPerSlide = 0) {
     text = text.replace(yamlMatch[0], '').trim();
   }
 
-  // Split by [/speaker:alignment] and [/response:alignment] tags
-  // Regex captures: 1=type(speaker/response), 2=alignment(left/center/right)
+  // Split by [/speaker:alignment], [/response:alignment], and [/candidate:alignment] tags
+  // Regex captures: 1=type(speaker/response/candidate), 2=alignment(left/center/right)
   // Flags: g (global), m (multiline), i (case-insensitive)
-  const tagRegex = /^\[\/\s*(speaker|response)\s*(?::\s*(left|center|right)\s*)?\]\s*$/gmi;
+  const tagRegex = /^\[\/\s*(speaker|response|candidate)\s*(?::\s*(left|center|right)\s*)?\]\s*$/gmi;
   const tagMatches = [...text.matchAll(tagRegex)];
 
   const slides = [];

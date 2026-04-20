@@ -152,11 +152,11 @@ export default function LiveControl({
              position: 'absolute', top: 0, left: 0
            }}>
               {/* isMaster={true} → this preview is the local status authority.
-                  muteAudio={true} → silenced; it's a monitor only, not for sound. */}
+                  muteAudio={false} → this is the ONLY place audio plays out from. */}
               <OutputScreen
                 payload={livePayload}
                 isMaster={true}
-                muteAudio={true}
+                muteAudio={false}
                 onStatusUpdate={handleStatusUpdate}
                 remoteCommand={remoteCommand}
                 isLiveBroadcast={true}
