@@ -186,6 +186,8 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (!payload.isYouTube && !payload.isVimeo) return;
 
        let isYouTubeListening = false;
+       let lastStatusTs = 0;
+       let lastPaused = null;
 
        const handleMessage = (event) => {
           try {
@@ -204,7 +206,12 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                    const paused = info.playerState !== undefined ? (info.playerState !== 1 && info.playerState !== 3) : followerPausedRef.current;
                    followerPausedRef.current = paused;
                    if (duration > 0) {
-                      statusHandlerRef.current?.({ time, duration, paused, ts: Date.now() });
+                      const now = Date.now();
+                      if (now - lastStatusTs > 500 || paused !== lastPaused) {
+                          lastStatusTs = now;
+                          lastPaused = paused;
+                          statusHandlerRef.current?.({ time, duration, paused, ts: now });
+                      }
                       followerTimeRef.current = time;
                       followerDurationRef.current = duration;
                    }
@@ -233,9 +240,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                    const time = data.data.seconds;
                    const duration = data.data.duration;
                    
-                   // Removed bug where time > followerTimeRef.current forced the player to unpause spontaneously.
-                   
-                   statusHandlerRef.current?.({ time, duration, paused: followerPausedRef.current, ts: Date.now() });
+                   const now = Date.now();
+                   if (now - lastStatusTs > 500) {
+                      lastStatusTs = now;
+                      statusHandlerRef.current?.({ time, duration, paused: followerPausedRef.current, ts: now });
+                   }
                    followerTimeRef.current = time;
                    followerDurationRef.current = duration;
                 } else if (eventName === 'play') {
@@ -367,13 +376,25 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           }
        }
        if (videoRef.current) {
-          const diff = Math.abs(videoRef.current.currentTime - targetTime);
-          if (diff > 0.5) videoRef.current.currentTime = targetTime;
+          const v = videoRef.current;
+          const rawDiff = v.currentTime - targetTime;
           
-          if (isPaused && !videoRef.current.paused) {
-             videoRef.current.pause();
-          } else if (!isPaused && videoRef.current.paused) {
-             videoRef.current.play().catch(() => {});
+          if (Math.abs(rawDiff) > 0.5) {
+             if (v.readyState >= 1) {
+                try { v.currentTime = targetTime; } catch(e){}
+             }
+             v.playbackRate = 1;
+          } else if (!isPaused) {
+             if (rawDiff > 0.05) v.playbackRate = 0.95;
+             else if (rawDiff < -0.05) v.playbackRate = 1.05;
+             else v.playbackRate = 1;
+          }
+
+          if (isPaused && !v.paused) {
+             v.pause();
+             v.playbackRate = 1;
+          } else if (!isPaused && v.paused) {
+             v.play().catch(() => {});
           }
        }
     }, [payload?.currentTime, payload?.isPaused, isMaster]);
@@ -472,6 +493,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                                paused: e.target.paused,
                                ts: Date.now()
                             });
+                         } else if (payload) {
+                            // Follower mid-playback synchronization initialization
+                            const target = payload.currentTime + (payload.isPaused ? 0 : ((Date.now() - (payload.currentTimeTs || Date.now())) / 1000));
+                            e.target.currentTime = target;
+                            if (!payload.isPaused) e.target.play().catch(() => {});
                          }
                       }}
                       onTimeUpdate={(e) => {
