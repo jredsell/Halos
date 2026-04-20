@@ -8,7 +8,8 @@ export function useFolderContents(libraryHandle, folderName, trigger) {
   const [files, setFiles] = useState([]);
 
   useEffect(() => {
-    if (!libraryHandle || !folderName || folderName === 'Service' || folderName === 'Songs') {
+    const excludedTabs = ['Service', 'Songs', 'new_song', 'new_liturgy', 'Settings'];
+    if (!libraryHandle || !folderName || excludedTabs.includes(folderName)) {
        setFiles([]);
        return;
     }
