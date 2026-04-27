@@ -406,7 +406,7 @@ function App() {
     };
 
     broadcast();
-  }, [isLive, isBlackScreen, isShowLogo, isClearText, logoUrl, liveItem, liveSlideIndex, linesPerSlide, playbackStatus, slideshowInterval, syncedMediaUrl, churchName]);
+  }, [isLive, isBlackScreen, isShowLogo, isClearText, logoUrl, liveItem, liveSlideIndex, linesPerSlide, playbackStatus, slideshowInterval, syncedMediaUrl, churchName, stickyAudioItem]);
 
   useEffect(() => {
     const bc = new BroadcastChannel('halos-projector-hub');

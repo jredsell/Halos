@@ -84,6 +84,7 @@ function AutoFitLiturgy({ lines, liturgyType = 'speaker', alignment = 'center', 
 // isMaster: this instance drives playback & reports status.
 export default function OutputScreen({ payload, isMaster = false, isLiveBroadcast = false, muteAudio = false, onStatusUpdate = null, remoteCommand = null }) {
     const videoRef = useRef(null);
+    const stickyAudioRef = useRef(null);
     const iframeRef = useRef(null);
     const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -134,6 +135,22 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
        return urlObj.toString();
     }, [payload?.activeMediaUrl, isMaster, payload?.isYouTube, payload?.isVimeo, payload?.itemAutoPlay]);
+
+    // Sticky Audio Playback Logic
+    useEffect(() => {
+       if (stickyAudioRef.current && payload?.stickyAudioUrl) {
+          const a = stickyAudioRef.current;
+          if (isMaster && !muteAudio) {
+             a.muted = false;
+             a.volume = 1;
+          } else {
+             a.muted = true;
+          }
+          a.play().catch(() => {});
+       } else if (stickyAudioRef.current) {
+          stickyAudioRef.current.pause();
+       }
+    }, [payload?.stickyAudioUrl, isMaster, muteAudio]);
 
     // 2. Command Helpers
     const sendIframeCommand = (cmd, args = []) => {
@@ -449,8 +466,10 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
         const needsAudioRestore = isMaster
             && !muteAudio
             && !hasInteracted
-            && payload.mediaType === 'video'
-            && (payload.isYouTube || payload.isVimeo);
+            && (
+              (payload.mediaType === 'video' && (payload.isYouTube || payload.isVimeo)) || 
+              !!payload.stickyAudioUrl
+            );
 
         return (
            <>
@@ -564,6 +583,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
               {/* Persistent Audio Layer */}
               {payload.stickyAudioUrl && (
                   <audio 
+                    ref={stickyAudioRef}
                     src={payload.stickyAudioUrl} 
                     autoPlay={true} 
                     muted={isMuted || muteAudio} 
