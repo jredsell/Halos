@@ -21,7 +21,7 @@ import OutputScreen from './components/OutputScreen'
 
 const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Music', 'Settings'];
 
-function FolderExplorer({ folderName, handle, onSelectItem }) {
+function FolderExplorer({ folderName, handle, onSelectItem, onBack }) {
     const [files, setFiles] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     
@@ -50,6 +50,11 @@ function FolderExplorer({ folderName, handle, onSelectItem }) {
     return (
         <div className="w-full h-full flex flex-col items-center bg-black rounded-2xl border border-neutral-800 p-8 shadow-inner overflow-hidden relative">
              <div className="absolute top-4 left-4 z-10 text-[10px] font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-2">
+                 <button onClick={onBack} className="hover:bg-neutral-800 p-1.5 rounded-lg transition-colors flex items-center gap-1.5 text-blue-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    BACK
+                 </button>
+                 <span className="opacity-20 mx-1">|</span>
                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-1.2-1.8A2 2 0 0 0 7.55 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
                 {folderName}
              </div>
@@ -853,6 +858,7 @@ function App() {
                  libraryHandle={libraryHandle}
                  searchState={searchState}
                  folderFiles={folderFiles}
+                 linesPerSlide={linesPerSlide}
                  serviceItems={serviceItems}
                  systemTrigger={systemTrigger}
                  onRefresh={refreshLibrary}
@@ -952,7 +958,35 @@ function App() {
                      ) : (
                        <video src={selectedItem.url} controls className="w-full h-full object-contain rounded-lg" />
                      )}
+                     {/* Quick Add for Video */}
+                     <button 
+                        onClick={handleAddToService}
+                        className="absolute bottom-6 right-6 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl shadow-2xl border border-blue-400/30 transition active:scale-95 z-20 flex items-center gap-2"
+                     >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                        Add to Service
+                     </button>
                   </div>
+               ) : selectedItem?.type === 'audio' ? (
+                   <div className="w-full h-full flex flex-col items-center justify-center bg-black rounded-2xl border border-neutral-800 p-12 shadow-inner overflow-hidden relative">
+                       <div className="flex flex-col items-center gap-8 max-w-md w-full">
+                           <div className="w-24 h-24 bg-purple-600/20 rounded-full flex items-center justify-center border border-purple-500/30">
+                               <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-500"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                           </div>
+                           <div className="text-center">
+                               <h3 className="text-2xl font-black text-white tracking-widest mb-2 italic uppercase">{selectedItem.title}</h3>
+                               <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.3em]">Audio Track Preview</p>
+                           </div>
+                           <audio src={selectedItem.url} controls className="w-full" />
+                           <button 
+                             onClick={handleAddToService}
+                             className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition shadow-xl border border-blue-400/20 active:scale-95 flex justify-center items-center gap-2"
+                           >
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                             Add Audio to Service
+                           </button>
+                       </div>
+                   </div>
                ) : selectedItem?.type === 'folder_explorer' ? (
                    <FolderExplorer 
                        folderName={selectedItem.title} 
@@ -962,6 +996,9 @@ function App() {
                                selectedItem._internalFileClick({ ...f, isDirectory: f.isDirectory });
                            }
                        }} 
+                       onBack={() => {
+                          setSelectedItem(null);
+                       }}
                    />
                ) : selectedItem?.isPpt || selectedItem?.isDocument ? (
                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-black rounded-2xl border-2 border-neutral-800 shadow-inner">

@@ -6,12 +6,14 @@ import { processBibleJson } from '../services/bibleService';
 import ConfirmModal from './ConfirmModal';
 import SettingsView from './SettingsView';
 import { parseLiturgyMarkdown } from '../utils/liturgyParser';
+import { parseSongMarkdown } from '../utils/songParser';
 
 export default function Sidebar({ 
   activeTab, 
   libraryHandle, 
   searchState, 
   folderFiles,
+  linesPerSlide = 2,
   serviceItems, 
   onServiceReorder, 
   onSelectItem, 
@@ -376,7 +378,7 @@ export default function Sidebar({
       filename: file.name
     };
 
-    if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(ext) || (ext === 'webp')) {
        previewItem.images = [{ url }];
        previewItem.type = 'image';
     } else if (['mp4', 'webm', 'mov'].includes(ext)) {
@@ -388,6 +390,15 @@ export default function Sidebar({
     } else if (['ppt', 'pptx', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'key', 'pages', 'numbers'].includes(ext)) {
        previewItem.isDocument = true;
        previewItem.type = 'document';
+    } else if (['md', 'txt', 'halos'].includes(ext)) {
+       const text = await file.text();
+       if (activeTab === 'Liturgy' || text.includes('---')) {
+          const parsed = parseLiturgyMarkdown(text, linesPerSlide);
+          previewItem = { ...previewItem, ...parsed, type: 'liturgy', slides: parsed.slides, rawText: text };
+       } else {
+          const parsed = parseSongMarkdown(text, linesPerSlide);
+          previewItem = { ...previewItem, ...parsed, type: 'song', slides: parsed.slides, rawText: text };
+       }
     } else if (['json'].includes(ext) && activeTab === 'Bible') {
        const text = await file.text();
        const rawData = JSON.parse(text);

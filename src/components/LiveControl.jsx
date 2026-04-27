@@ -26,12 +26,54 @@ export default function LiveControl({
   const [bgmVolume, setBgmVolume] = useState(0.5);
   const bgmAudioRef = useRef(null);
 
+  const [flatAudioFiles, setFlatAudioFiles] = useState([]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const scan = async () => {
+       const flat = [];
+       const traverse = async (handles, path = '') => {
+           for (const f of handles) {
+               if (!f || !f.name) continue;
+               
+               // If it's a file, check extension
+               if (!f.isDirectory) {
+                   const isAudio = /\.(mp3|wav|m4a|aac|ogg|flac|m4p)$/i.test(f.name);
+                   if (isAudio) {
+                      flat.push({ ...f, displayPath: path ? `${path}/${f.name}` : f.name });
+                   }
+               } else if (f.isDirectory && f.handle && f.handle.entries) {
+                   // If it's a directory, recurse
+                   try {
+                       const children = [];
+                       for await (const [name, handle] of f.handle.entries()) {
+                           children.push({ name, handle, isDirectory: handle.kind === 'directory' });
+                       }
+                       await traverse(children, path ? `${path}/${f.name}` : f.name);
+                   } catch (e) {
+                       console.warn("BGM Scan failed for folder:", f.name, e);
+                   }
+               }
+           }
+       };
+       
+       if (musicFiles && musicFiles.length > 0) {
+          await traverse(musicFiles);
+          if (!isCancelled) {
+              setFlatAudioFiles(flat.sort((a,b) => a.displayPath.localeCompare(b.displayPath, undefined, {numeric: true})));
+          }
+       }
+    };
+    scan();
+    return () => { isCancelled = true; };
+  }, [musicFiles]);
+
   useEffect(() => {
     if (!bgmFile) {
        setBgmUrl(null);
        return;
     }
-    const match = musicFiles?.find(f => f.name === bgmFile);
+    const match = flatAudioFiles?.find(f => f.displayPath === bgmFile);
     if (!match) return;
     
     let isCancelled = false;
@@ -39,7 +81,7 @@ export default function LiveControl({
        if (!isCancelled) setBgmUrl(URL.createObjectURL(file));
     });
     return () => { isCancelled = true; }
-  }, [bgmFile, musicFiles]);
+  }, [bgmFile, flatAudioFiles]);
 
   useEffect(() => {
     if (bgmAudioRef.current) {
@@ -354,8 +396,8 @@ export default function LiveControl({
              className="w-full bg-neutral-950 border border-neutral-800 rounded-lg text-xs py-2 px-2 text-white outline-none focus:border-blue-500 transition mb-2"
           >
              <option value="">No background music</option>
-             {musicFiles?.map(f => (
-                <option key={f.name} value={f.name}>{f.name}</option>
+             {flatAudioFiles?.map(f => (
+                <option key={f.displayPath} value={f.displayPath}>{f.displayPath}</option>
              ))}
           </select>
 
