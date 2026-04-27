@@ -271,14 +271,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
        const poll = setInterval(() => {
           if (!iframeRef.current?.contentWindow) return;
-          const win = iframeRef.current.contentWindow;
-          if (payload.isYouTube) {
-             if (!isYouTubeListening) {
-                 win.postMessage(JSON.stringify({ event: "listening" }), "*");
-             }
-             win.postMessage(JSON.stringify({ event: "command", func: "getDuration" }), "*");
-             win.postMessage(JSON.stringify({ event: "command", func: "getCurrentTime" }), "*");
-          } else if (payload.isVimeo) {
+          if (payload.isVimeo) {
              sendVimeoCommand('getCurrentTime');
              sendVimeoCommand('getDuration');
              if (!isVimeoReady.current) {
@@ -469,6 +462,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                         ref={iframeRef}
                         id={payload.isVimeo ? "halos-vimeo" : undefined}
                         src={iframeSrc}
+                        onLoad={(e) => {
+                           if (payload.isYouTube) {
+                              e.target.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*');
+                           }
+                        }}
                         className="w-full h-full scale-[1.01] origin-center"
                         style={{ clipPath: 'inset(1% 1% 1% 1%)' }}
                         frameBorder="0"
