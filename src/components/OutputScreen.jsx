@@ -560,6 +560,18 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                     onPause={() => isMaster && statusHandlerRef.current?.({ paused: true, ts: Date.now() })}
                   />
               )}
+
+              {/* Persistent Audio Layer */}
+              {payload.stickyAudioUrl && (
+                  <audio 
+                    src={payload.stickyAudioUrl} 
+                    autoPlay={true} 
+                    muted={isMuted || muteAudio} 
+                    loop 
+                    className="hidden" 
+                  />
+              )}
+
               {(payload.mediaType === 'song' || payload.mediaType === 'bible') && payload.activeSlide && payload.activeSlide.length > 0 && (
                  <AutoFitLyrics lines={payload.activeSlide} isMaster={isMaster} isLiveBroadcast={isLiveBroadcast} isClearText={payload.isClearText} />
               )}
@@ -573,8 +585,6 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                    isClearText={payload.isClearText}
                  />
               )}
-
-
 
               {needsAudioRestore && (
                  <div className="absolute inset-0 bg-blue-600/30 backdrop-blur-xl z-50 flex flex-col items-center justify-center text-white p-12 cursor-pointer" onClick={() => forceUnmute()}>

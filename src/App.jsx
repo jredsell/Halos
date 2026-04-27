@@ -102,6 +102,7 @@ function App() {
   const [selectedIndices, setSelectedIndices] = useState(new Set());
   const [serviceItems, setServiceItems] = useState([]); 
   const [playedItems, setPlayedItems] = useState(new Set());
+  const [stickyAudioItem, setStickyAudioItem] = useState(null);
   const [editingSong, setEditingSong] = useState(null);
   const [linesPerSlide, setLinesPerSlide] = useState(2);
   const [presentationPaused, setPresentationPaused] = useState(true);
@@ -333,7 +334,8 @@ function App() {
        isPaused: playbackStatus.paused,
        slideshowInterval: slideshowInterval,
        itemAutoPlay: liveItem?.autoPlay || false,
-       churchName: churchName
+       churchName: churchName,
+        stickyAudioUrl: stickyAudioItem?.url || null
     };
 
     // Populate content if we have a LIVE selection (Locked to Service Flow)
@@ -687,6 +689,15 @@ function App() {
     setIsClearText(false); // Reset overlays when changing items
   }
 
+  const handleToggleStickyAudio = (item) => {
+    if (stickyAudioItem?.id === item.id) {
+       setStickyAudioItem(null);
+    } else {
+       setStickyAudioItem(item);
+       setPresentationPaused(false);
+    }
+  };
+
 
 
   const handleAddToService = () => {
@@ -872,6 +883,7 @@ function App() {
                  onSaveService={handleSaveService}
                  onLoadService={handleLoadService}
                  onClearService={handleClearService}
+                  playbackStatus={playbackStatus}
                  roomId={roomId}
                  liveItemId={liveItem?.id}
                  playedItems={playedItems}
@@ -883,6 +895,8 @@ function App() {
                  })}
                  churchName={churchName}
                  setChurchName={setChurchName}
+                  stickyAudioId={stickyAudioItem?.id}
+                  onToggleSticky={handleToggleStickyAudio}
               />
             </div>
             
@@ -959,13 +973,15 @@ function App() {
                        <video src={selectedItem.url} controls className="w-full h-full object-contain rounded-lg" />
                      )}
                      {/* Quick Add for Video */}
-                     <button 
-                        onClick={handleAddToService}
-                        className="absolute bottom-6 right-6 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl shadow-2xl border border-blue-400/30 transition active:scale-95 z-20 flex items-center gap-2"
-                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                        Add to Service
-                     </button>
+                     {activeTab !== 'Service' && (
+                        <button 
+                           onClick={handleAddToService}
+                           className="absolute bottom-6 right-6 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl shadow-2xl border border-blue-400/30 transition active:scale-95 z-20 flex items-center gap-2"
+                        >
+                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                           Add to Service
+                        </button>
+                     )}
                   </div>
                ) : selectedItem?.type === 'audio' ? (
                    <div className="w-full h-full flex flex-col items-center justify-center bg-black rounded-2xl border border-neutral-800 p-12 shadow-inner overflow-hidden relative">
@@ -978,13 +994,15 @@ function App() {
                                <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.3em]">Audio Track Preview</p>
                            </div>
                            <audio src={selectedItem.url} controls className="w-full" />
-                           <button 
-                             onClick={handleAddToService}
-                             className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition shadow-xl border border-blue-400/20 active:scale-95 flex justify-center items-center gap-2"
-                           >
-                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                             Add Audio to Service
-                           </button>
+                           {activeTab !== 'Service' && (
+                             <button 
+                               onClick={handleAddToService}
+                               className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition shadow-xl border border-blue-400/20 active:scale-95 flex justify-center items-center gap-2"
+                             >
+                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                               Add Audio to Service
+                             </button>
+                           )}
                        </div>
                    </div>
                ) : selectedItem?.type === 'folder_explorer' ? (

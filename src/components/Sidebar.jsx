@@ -27,12 +27,15 @@ export default function Sidebar({
   systemTrigger,
   onDeleteItem,
   liveItemId,
+  playbackStatus = { time: 0, duration: 0, paused: true },
   playedItems,
   onResetPlayed,
   onResetItemPlayed,
   roomId,
   churchName,
-  setChurchName
+  setChurchName,
+  stickyAudioId,
+  onToggleSticky
 }) {
   const [localQuery, setLocalQuery] = useState('');
   const [showAdded, setShowAdded] = useState(false);
@@ -621,9 +624,12 @@ export default function Sidebar({
            onLoad={onLoadService}
            onClear={onClearService}
            liveItemId={liveItemId}
+           playbackStatus={playbackStatus}
            playedItems={playedItems}
            onResetPlayed={onResetPlayed}
            onResetItemPlayed={onResetItemPlayed}
+           stickyAudioId={stickyAudioId}
+           onToggleSticky={onToggleSticky}
          />
       </div>
     );
