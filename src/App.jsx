@@ -21,6 +21,61 @@ import OutputScreen from './components/OutputScreen'
 
 const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Music', 'Settings'];
 
+function FolderExplorer({ folderName, handle, onSelectItem }) {
+    const [files, setFiles] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    
+    useEffect(() => {
+        let isCancelled = false;
+        const load = async () => {
+            const arr = [];
+            for await (const [name, fileHandle] of handle.entries()) {
+                if (fileHandle.kind === 'file' || fileHandle.kind === 'directory') {
+                    arr.push({ name, handle: fileHandle, isDirectory: fileHandle.kind === 'directory' });
+                }
+            }
+            if (!isCancelled) {
+               setFiles(arr.sort((a,b) => {
+                  if (a.isDirectory && !b.isDirectory) return -1;
+                  if (!a.isDirectory && b.isDirectory) return 1;
+                  return a.name.localeCompare(b.name, undefined, {numeric: true});
+               }));
+               setIsLoading(false);
+            }
+        };
+        load();
+        return () => { isCancelled = true; };
+    }, [handle]);
+
+    return (
+        <div className="w-full h-full flex flex-col items-center bg-black rounded-2xl border border-neutral-800 p-8 shadow-inner overflow-hidden relative">
+             <div className="absolute top-4 left-4 z-10 text-[10px] font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-2">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-1.2-1.8A2 2 0 0 0 7.55 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                {folderName}
+             </div>
+             <div className="w-full max-w-2xl h-full pt-4 flex flex-col">
+                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                     {isLoading && <div className="text-neutral-500 italic p-4 text-center text-sm animate-pulse">Scanning folder...</div>}
+                     {!isLoading && files.map(f => (
+                         <div 
+                             key={f.name}
+                             onClick={() => onSelectItem(f)}
+                             className="p-3 bg-neutral-900 border border-neutral-800 rounded-xl hover:bg-neutral-800 hover:border-blue-500/50 cursor-pointer flex items-center gap-3 transition-colors text-sm text-neutral-300 shadow"
+                         >
+                             {f.isDirectory 
+                                 ? <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400 flex-shrink-0"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-1.2-1.8A2 2 0 0 0 7.55 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                                 : <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500 flex-shrink-0"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                             }
+                             <span className="truncate">{f.name}</span>
+                         </div>
+                     ))}
+                     {!isLoading && files.length === 0 && <div className="text-neutral-500 italic p-4 text-center text-sm">Empty Folder</div>}
+                 </div>
+             </div>
+        </div>
+    );
+}
+
 function App() {
 
   const [libraryHandle, setLibraryHandle] = useState(null)
@@ -898,6 +953,16 @@ function App() {
                        <video src={selectedItem.url} controls className="w-full h-full object-contain rounded-lg" />
                      )}
                   </div>
+               ) : selectedItem?.type === 'folder_explorer' ? (
+                   <FolderExplorer 
+                       folderName={selectedItem.title} 
+                       handle={selectedItem.handle} 
+                       onSelectItem={(f) => {
+                           if (selectedItem._internalFileClick) {
+                               selectedItem._internalFileClick({ ...f, isDirectory: f.isDirectory });
+                           }
+                       }} 
+                   />
                ) : selectedItem?.isPpt || selectedItem?.isDocument ? (
                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-8 bg-black rounded-2xl border-2 border-neutral-800 shadow-inner">
                     <h3 className="text-3xl font-extrabold mb-4 text-white tracking-widest">{selectedItem.title}</h3>

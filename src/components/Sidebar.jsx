@@ -326,23 +326,36 @@ export default function Sidebar({
 
   const handleGenericFileClick = async (fileObj) => {
     if (fileObj.isDirectory) {
-        const imgArray = [];
-        for await (const [name, handle] of fileObj.handle.entries()) {
-             if (handle.kind === 'file' && name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-                 const file = await handle.getFile();
-                 imgArray.push({ name, url: URL.createObjectURL(file) });
-             }
+        if (activeTab === 'Images') {
+            const imgArray = [];
+            for await (const [name, handle] of fileObj.handle.entries()) {
+                 if (handle.kind === 'file' && name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                     const file = await handle.getFile();
+                     imgArray.push({ name, url: URL.createObjectURL(file) });
+                 }
+            }
+            
+            imgArray.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+            
+            onSelectItem({
+                title: fileObj.name,
+                type: 'slide_deck',
+                images: imgArray.map(img => ({ url: img.url })),
+                id: fileObj.name,
+                folder: activeTab,
+                filename: fileObj.name
+            });
+            return;
         }
-        
-        imgArray.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-        
+
         onSelectItem({
             title: fileObj.name,
-            type: 'slide_deck',
-            images: imgArray.map(img => ({ url: img.url })),
+            type: 'folder_explorer',
+            handle: fileObj.handle,
             id: fileObj.name,
             folder: activeTab,
-            filename: fileObj.name
+            filename: fileObj.name,
+            _internalFileClick: handleGenericFileClick
         });
         return;
     }
