@@ -185,12 +185,18 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
              else if (!payload?.isPaused) sendVimeoCommand('play');
           }, 500);
        } else if (videoRef.current) {
-          // Local video: unmute programmatically (handles browser autoplay policy edge cases)
+          // Local video/audio: unmute programmatically
           videoRef.current.muted = false;
           videoRef.current.volume = 1;
           if (!payload?.isPaused) {
               videoRef.current.play().catch(() => {});
           }
+       }
+
+       if (stickyAudioRef.current && payload?.stickyAudioUrl) {
+          stickyAudioRef.current.muted = false;
+          stickyAudioRef.current.volume = 1;
+          stickyAudioRef.current.play().catch(() => {});
        }
     };
 
@@ -466,10 +472,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
         const needsAudioRestore = isMaster
             && !muteAudio
             && !hasInteracted
-            && (
-              (payload.mediaType === 'video' && (payload.isYouTube || payload.isVimeo)) || 
-              !!payload.stickyAudioUrl
-            );
+            && (payload.mediaType === 'video' && (payload.isYouTube || payload.isVimeo));
 
         return (
            <>

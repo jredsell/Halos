@@ -242,7 +242,7 @@ export default function LiveControl({
         </div>
 
         {/* 2. Playback Controls */}
-        {(livePayload?.mediaType === 'video' || livePayload?.mediaType === 'slide_deck') && (
+        {(livePayload?.mediaType === 'video' || livePayload?.mediaType === 'audio' || livePayload?.mediaType === 'slide_deck') && (
            <div className="mt-3 bg-neutral-900/80 border border-neutral-800 rounded-xl p-3 space-y-2.5 shadow-xl">
               <div className="flex items-center justify-between gap-3">
                  {/* Play / Pause button */}
@@ -261,7 +261,7 @@ export default function LiveControl({
                       : <Pause size={18} fill="currentColor" />}
                  </button>
 
-                 {livePayload?.mediaType === 'video' ? (
+                 {(livePayload?.mediaType === 'video' || livePayload?.mediaType === 'audio') ? (
                      <>
                          <div className="flex-1 flex flex-col gap-1">
                             {/* Seek / playhead slider */}
@@ -349,7 +349,7 @@ export default function LiveControl({
               </div>
 
               {/* Volume control */}
-              {livePayload.mediaType === 'video' && (
+              {(livePayload.mediaType === 'video' || livePayload.mediaType === 'audio') && (
                   <div className="flex items-center gap-2.5 border-t border-neutral-800/50 pt-2.5">
                      <button onClick={() => {
                         const targetVol = displayVolume > 0 ? 0 : (preMuteVolumeRef.current || 1);
