@@ -123,7 +123,7 @@ export default function ServiceFlow({
                         title={stickyAudioId === item.id ? "Playing Persistent" : "Play as Persistent Audio"}
                      >
                         {stickyAudioId === item.id ? <Pause size={10} fill="currentColor" /> : <Play size={10} fill="currentColor" />}
-                        {stickyAudioId === item.id ? 'Active' : 'Play'}
+                        {stickyAudioId === item.id ? 'Playing' : 'Play'}
                      </button>
                   )}
                  

@@ -587,7 +587,13 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                     src={payload.stickyAudioUrl} 
                     autoPlay={true} 
                     muted={isMuted || muteAudio} 
-                    loop 
+                    onEnded={() => {
+                        if (isMaster) {
+                           const bc = new BroadcastChannel('halos-projector-hub');
+                           bc.postMessage({ type: 'sticky-audio-ended' });
+                           bc.close();
+                        }
+                    }}
                     className="hidden" 
                   />
               )}

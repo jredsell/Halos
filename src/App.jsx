@@ -438,6 +438,10 @@ function App() {
            if (e.data.paused !== undefined) setPresentationPaused(e.data.paused);
            if (e.data.slideshowInterval !== undefined) setSlideshowInterval(e.data.slideshowInterval);
         }
+
+        if (e.data.type === 'sticky-audio-ended') {
+           setStickyAudioItem(null);
+        }
      };
      return () => bc.close();
    }, [livePayload]);
