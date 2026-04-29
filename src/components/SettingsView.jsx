@@ -1,7 +1,7 @@
 import { Share2, Copy, Check, Building2 } from 'lucide-react';
 import { useState } from 'react';
 
-export default function SettingsView({ roomId, churchName, setChurchName }) {
+export default function SettingsView({ roomId, churchName, setChurchName, onChangeLibrary }) {
   const [copied, setCopied] = useState(false);
   const base = window.location.origin + window.location.pathname;
   const liveUrl = `${base}${base.endsWith('/') ? '' : '/'}?network=true${roomId ? `&room=${roomId}` : ''}`;
