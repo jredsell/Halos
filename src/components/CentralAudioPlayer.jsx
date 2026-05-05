@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Repeat } from 'lucide-react';
 
 export default function CentralAudioPlayer({ 
     item, 
@@ -11,6 +11,7 @@ export default function CentralAudioPlayer({
     const [localDuration, setLocalDuration] = useState(0);
     const [localPaused, setLocalPaused] = useState(true);
     const [localVolume, setLocalVolume] = useState(1);
+    const [isLooping, setIsLooping] = useState(false);
     
     const audioRef = useRef(null);
     const isDragging = useRef(false);
@@ -89,6 +90,18 @@ export default function CentralAudioPlayer({
         }
     };
 
+    const toggleLoop = () => {
+        const nextLoop = !isLooping;
+        setIsLooping(nextLoop); // Optimistic UI update
+        if (isLiveItem) {
+            const channel = new BroadcastChannel('halos-projector-hub');
+            channel.postMessage({ type: 'playback', command: 'loop', value: nextLoop, source: 'dashboard-ui' });
+            channel.close();
+        } else {
+            if (audioRef.current) audioRef.current.loop = nextLoop;
+        }
+    };
+
     return (
         <div className="w-full bg-neutral-900/80 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 max-w-2xl mx-auto mt-4 relative overflow-hidden">
             {!isLiveItem && (
@@ -119,12 +132,21 @@ export default function CentralAudioPlayer({
             )}
 
             <div className="flex items-center gap-5 w-full">
-                <button 
-                    onClick={handlePlayPause}
-                    className="w-14 h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center transition active:scale-95 shadow-lg flex-shrink-0"
-                >
-                    {localPaused ? <Play size={24} fill="currentColor" className="ml-1" /> : <Pause size={24} fill="currentColor" />}
-                </button>
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={handlePlayPause}
+                        className="w-14 h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center transition active:scale-95 shadow-lg flex-shrink-0"
+                    >
+                        {localPaused ? <Play size={24} fill="currentColor" className="ml-1" /> : <Pause size={24} fill="currentColor" />}
+                    </button>
+                    <button 
+                        onClick={toggleLoop}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition active:scale-95 flex-shrink-0 ${isLooping ? 'bg-blue-500/20 text-blue-400' : 'bg-neutral-800 text-neutral-500 hover:bg-neutral-700 hover:text-neutral-400'}`}
+                        title={isLooping ? "Repeat On" : "Repeat Off"}
+                    >
+                        <Repeat size={16} />
+                    </button>
+                </div>
                 
                 <div className="flex-1 flex flex-col gap-2 min-w-0">
                     <input 

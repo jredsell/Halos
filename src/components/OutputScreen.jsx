@@ -363,6 +363,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           if (command === 'pause') v.pause();
           if (command === 'seek') v.currentTime = value;
           if (command === 'volume') { if (isMaster) { v.volume = value; v.muted = (value === 0); } }
+          if (command === 'loop') v.loop = value;
        }
        setTimeout(() => { isMutingReports.current = false; }, 300);
     }, [remoteCommand, isMaster, payload?.isYouTube, payload?.isVimeo]);
@@ -503,7 +504,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                       src={payload.activeMediaUrl}
                       autoPlay={isMaster ? payload.itemAutoPlay : true}
                       muted={isMuted}
-                      loop
+                      loop={payload.itemLoop ?? true}
                       className={`w-full h-full object-cover ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}
                       onLoadedMetadata={(e) => {
                          if (isMaster) {
@@ -547,7 +548,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                     src={payload.activeMediaUrl}
                     autoPlay={isMaster ? payload.itemAutoPlay : true}
                     muted={isMuted}
-                    loop
+                    loop={payload.itemLoop ?? false}
                     className="hidden"
                     onLoadedMetadata={(e) => {
                        if (isMaster) {
