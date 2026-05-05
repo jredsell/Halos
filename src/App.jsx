@@ -630,38 +630,6 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedItem, activeSlideIndex]);
 
-  // ROUTING LAYER: PROJECTOR
-  if (isProjectorView) {
-    return (
-       <div className="w-screen h-screen bg-black overflow-hidden relative">
-          <OutputScreen payload={livePayload} isMaster={false} remoteCommand={remoteCommand} />
-       </div>
-    );
-  }
-
-  // ROUTING LAYER: NETWORK
-  if (isNetworkView) {
-    return (
-       <div className="w-screen h-screen bg-black overflow-hidden relative">
-          <OutputScreen payload={networkPayload} isLiveBroadcast={true} />
-       </div>
-    );
-  }
-
-  if (remoteControlRoom) {
-     return <RemoteControl roomId={remoteControlRoom} />;
-  }
-
-  if (!libraryHandle) {
-    return <FileSystemSetup onReady={async (handle) => {
-        setLibraryHandle(handle);
-        if (serviceItems && serviceItems.length > 0) {
-            const resolved = await reResolveMedia(serviceItems, handle);
-            setServiceItems(resolved);
-        }
-    }} />
-  }
-
   // Control Actions
   const handleSelectItem = async (item) => {
     if (item.type === 'new_song') {
@@ -896,6 +864,38 @@ function App() {
      setIsLive(false);
      setShowOfflineConfirm(false);
   };
+
+  // ROUTING LAYER: PROJECTOR
+  if (isProjectorView) {
+    return (
+       <div className="w-screen h-screen bg-black overflow-hidden relative">
+          <OutputScreen payload={livePayload} isMaster={false} remoteCommand={remoteCommand} />
+       </div>
+    );
+  }
+
+  // ROUTING LAYER: NETWORK
+  if (isNetworkView) {
+    return (
+       <div className="w-screen h-screen bg-black overflow-hidden relative">
+          <OutputScreen payload={networkPayload} isLiveBroadcast={true} />
+       </div>
+    );
+  }
+
+  if (remoteControlRoom) {
+     return <RemoteControl roomId={remoteControlRoom} />;
+  }
+
+  if (!libraryHandle) {
+    return <FileSystemSetup onReady={async (handle) => {
+        setLibraryHandle(handle);
+        if (serviceItems && serviceItems.length > 0) {
+            const resolved = await reResolveMedia(serviceItems, handle);
+            setServiceItems(resolved);
+        }
+    }} />
+  }
 
   return (
     <DragDropZone libraryHandle={libraryHandle}>
