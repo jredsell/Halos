@@ -374,12 +374,28 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        }
 
        if (payload.isYouTube || payload.isVimeo) {
-          const diff = Math.abs(followerTimeRef.current - targetTime);
-          if (diff > 2.0) {
+          const rawDiff = followerTimeRef.current - targetTime;
+          const absDiff = Math.abs(rawDiff);
+          
+          if (absDiff > 1.5) {
              if (payload.isYouTube) sendIframeCommand('seekTo', [targetTime, true]);
              else sendVimeoCommand('setCurrentTime', targetTime);
              followerTimeRef.current = targetTime;
+          } else if (!isPaused) {
+             let rate = 1;
+             if (rawDiff > 0.1) rate = 0.95;
+             else if (rawDiff < -0.1) rate = 1.05;
+             
+             if (payload.isYouTube) sendIframeCommand('setPlaybackRate', [rate]);
+             else sendVimeoCommand('setPlaybackRate', rate);
+          } else if (isPaused) {
+             if (absDiff > 0.1) {
+                if (payload.isYouTube) sendIframeCommand('seekTo', [targetTime, true]);
+                else sendVimeoCommand('setCurrentTime', targetTime);
+                followerTimeRef.current = targetTime;
+             }
           }
+
           if (isPaused && !followerPausedRef.current) {
              if (payload.isYouTube) sendIframeCommand('pauseVideo');
              else sendVimeoCommand('pause');
