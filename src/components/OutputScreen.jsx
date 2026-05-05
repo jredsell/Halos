@@ -501,6 +501,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                  ) : (
                     <video
                       ref={videoRef}
+                      key={payload.activeMediaUrl}
                       src={payload.activeMediaUrl}
                       autoPlay={isMaster ? payload.itemAutoPlay : true}
                       muted={isMuted}
@@ -545,6 +546,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
               {payload.mediaType === 'audio' && payload.activeMediaUrl && !new URLSearchParams(window.location.search).get('projector') && !new URLSearchParams(window.location.search).get('network') && (
                   <audio
                     ref={videoRef}
+                    key={payload.activeMediaUrl}
                     src={payload.activeMediaUrl}
                     autoPlay={isMaster ? payload.itemAutoPlay : true}
                     muted={isMuted}

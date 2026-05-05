@@ -20,11 +20,10 @@ export default function CentralAudioPlayer({
 
     // Reset when item changes
     useEffect(() => {
-        if (!isLiveItem) {
-            setLocalTime(0);
-            setLocalPaused(true);
-        }
-    }, [item?.url, isLiveItem]);
+        setLocalTime(0);
+        setLocalDuration(0);
+        setLocalPaused(true);
+    }, [item?.url]);
 
     // Sync with live output
     useEffect(() => {

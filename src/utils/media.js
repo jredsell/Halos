@@ -13,9 +13,12 @@ export async function reResolveMedia(items, library) {
     if (!item.folder || !item.filename) continue;
     
     try {
-      const dirHandle = await library.getDirectoryHandle(item.folder);
       if (item.type === 'slide_deck') {
-         const subDir = await dirHandle.getDirectoryHandle(item.filename);
+         let subDir = item.handle || item.fileHandle;
+         if (!subDir) {
+             const dirHandle = await library.getDirectoryHandle(item.folder);
+             subDir = await dirHandle.getDirectoryHandle(item.filename);
+         }
          const imgArray = [];
          for await (const entry of subDir.values()) {
             if (entry.kind === 'file' && entry.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
@@ -26,10 +29,14 @@ export async function reResolveMedia(items, library) {
          imgArray.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
          newItems[i] = { ...item, images: imgArray.map(img => ({ url: img.url })) };
       } else if (item.folder !== 'Bible' && !item.isExternal) {
-         const fileHandle = await dirHandle.getFileHandle(item.filename);
+         let fileHandle = item.fileHandle || item.handle;
+         if (!fileHandle) {
+             const dirHandle = await library.getDirectoryHandle(item.folder);
+             fileHandle = await dirHandle.getFileHandle(item.filename);
+         }
          const file = await fileHandle.getFile();
          const url = URL.createObjectURL(file);
-         newItems[i] = { ...item, url, images: item.type === 'image' ? [{ url }] : undefined };
+         newItems[i] = { ...item, url, fileHandle, images: item.type === 'image' ? [{ url }] : undefined };
       }
     } catch (err) {
       console.warn(`Failed to re-resolve media: ${item.filename}`, err);
