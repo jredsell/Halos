@@ -177,10 +177,11 @@ export default function LiveControl({
         paused: fresh.paused,
         duration: fresh.duration,
         ts: Date.now(),
-        slideshowInterval: fresh.slideshowInterval
+        slideshowInterval: fresh.slideshowInterval,
+        itemId: livePayload?.itemId
      });
      channel.close();
-  }, []);
+  }, [livePayload?.itemId]);
 
   // handleStatusUpdate is called by the preview's OutputScreen (isMaster=true) on every
   // time/play/pause event. We update localStatus immediately for snappy controls.

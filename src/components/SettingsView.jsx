@@ -61,6 +61,27 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
         </div>
       </div>
 
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 flex flex-col items-center gap-4 shadow-xl mt-4">
+        <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 mb-2 w-full">
+           <Share2 size={14} className="text-blue-400" /> Remote Control Setup
+        </div>
+        <div className="bg-white p-2 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(base + '?remoteControl=' + roomId)}`} alt="Remote Control QR Code" className="w-32 h-32" />
+        </div>
+        <div className="text-center w-full">
+            <div className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Remote Control URL</div>
+            <div className="flex items-center gap-2 bg-neutral-950 px-3 py-2 rounded-lg border border-neutral-800 group cursor-pointer hover:border-blue-500/50 transition-colors" onClick={() => {
+                navigator.clipboard.writeText(base + '?remoteControl=' + roomId);
+            }}>
+                <code className="text-[11px] text-blue-400 font-bold break-all flex-1 text-left">{base}?remoteControl={roomId}</code>
+                <Copy size={12} className="text-neutral-600 group-hover:text-blue-400 transition-colors flex-shrink-0" />
+            </div>
+            <p className="text-[10px] text-neutral-500 mt-2 leading-relaxed">
+               Scan this code with a phone or tablet to control the live presentation remotely.
+            </p>
+        </div>
+      </div>
+
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 flex flex-col gap-4 shadow-xl mt-4">
         <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 mb-2">
            <Building2 size={14} className="text-blue-400" /> Storage Settings

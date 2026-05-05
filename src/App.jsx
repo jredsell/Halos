@@ -19,6 +19,7 @@ import ConfirmModal from './components/ConfirmModal'
 import { verifyPermission, reResolveMedia, formatVerseRanges, getYoutubeEmbedUrl } from './utils/media'
 import OutputScreen from './components/OutputScreen'
 import CentralAudioPlayer from './components/CentralAudioPlayer'
+import RemoteControl from './components/RemoteControl'
 
 const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Music', 'Settings'];
 
@@ -100,10 +101,12 @@ function App() {
   const peerRef = useRef(null);
   const connectionsRef = useRef([]);
   const livePayloadRef = useRef(null);
+  const serviceItemsRef = useRef([]);
   
   // Routing State
   const [isProjectorView, setIsProjectorView] = useState(false);
   const [isNetworkView, setIsNetworkView] = useState(false);
+  const [remoteControlRoom, setRemoteControlRoom] = useState(null);
   const [roomId, setRoomId] = useState(null);
   const [networkPayload, setNetworkPayload] = useState(null);
   
@@ -113,6 +116,7 @@ function App() {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [selectedIndices, setSelectedIndices] = useState(new Set());
   const [serviceItems, setServiceItems] = useState([]); 
+  useEffect(() => { serviceItemsRef.current = serviceItems; }, [serviceItems]);
   const [playedItems, setPlayedItems] = useState(new Set());
   const [stickyAudioItem, setStickyAudioItem] = useState(null);
   const [editingSong, setEditingSong] = useState(null);
@@ -145,6 +149,8 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('projector')) setIsProjectorView(true);
     if (params.get('network')) setIsNetworkView(true);
+    const remoteCode = params.get('remoteControl');
+    if (remoteCode) setRemoteControlRoom(remoteCode);
     const roomFromUrl = params.get('room');
 
     const init = async () => {
@@ -233,7 +239,18 @@ function App() {
         // Immediately sync the latest state to any newly connecting follower
         conn.on('open', () => {
            if (livePayloadRef.current) {
-              conn.send({ type: 'state', payload: livePayloadRef.current });
+              // Note: Only send the bare minimum fields to the remote control to save bandwidth
+              const minItems = serviceItemsRef.current.map(i => ({ id: i.id, type: i.type, title: i.title, filename: i.filename }));
+              conn.send({ type: 'state', payload: livePayloadRef.current, serviceItems: minItems });
+           }
+        });
+        
+        // Listen for incoming remote commands
+        conn.on('data', (data) => {
+           if (data.type === 'remote_command') {
+              const bc = new BroadcastChannel('halos-projector-hub');
+              bc.postMessage({ type: 'remote_command', ...data });
+              bc.close();
            }
         });
       });
@@ -339,6 +356,7 @@ function App() {
        logoUrl,
        linesPerSlide,
        mediaType: null,
+       itemId: liveItem?.id,
        activeSlide: null,
        activeMediaUrl: null,
        currentTime: playbackStatus.time,
@@ -413,8 +431,9 @@ function App() {
       networkPayload.isNetworkViewer = true; // Mark specifically for phone viewers
       livePayloadRef.current = networkPayload;
 
+      const minItems = serviceItemsRef.current.map(i => ({ id: i.id, type: i.type, title: i.title, filename: i.filename }));
       connectionsRef.current.forEach(conn => {
-         conn.send({ type: 'state', payload: networkPayload });
+         conn.send({ type: 'state', payload: networkPayload, serviceItems: minItems });
       });
     };
 
@@ -442,6 +461,10 @@ function App() {
         }
 
         if (e.data.type === 'status') {
+           // Prevent race conditions: ignore stale status reports from a previous media item
+           if (e.data.itemId && livePayload?.itemId && e.data.itemId !== livePayload.itemId) {
+               return;
+           }
            setPlaybackStatus({ 
               time: e.data.time, 
               duration: e.data.duration, 
@@ -623,6 +646,10 @@ function App() {
           <OutputScreen payload={networkPayload} isLiveBroadcast={true} />
        </div>
     );
+  }
+
+  if (remoteControlRoom) {
+     return <RemoteControl roomId={remoteControlRoom} />;
   }
 
   if (!libraryHandle) {
@@ -828,6 +855,31 @@ function App() {
     next[idx] = updatedItem;
     setServiceItems(next);
   };
+
+  useEffect(() => {
+     const bc = new BroadcastChannel('halos-remote-commands');
+     bc.onmessage = (e) => {
+         const data = e.data;
+         if (data.command === 'select_item') {
+             const item = serviceItems.find(i => i.id === data.itemId);
+             if (item) {
+                 setActiveTab('Service');
+                 handleSelectItem(item);
+             }
+         } else if (data.command === 'next_slide') {
+             setLiveSlideIndex(prev => prev + 1);
+         } else if (data.command === 'prev_slide') {
+             setLiveSlideIndex(prev => Math.max(0, prev - 1));
+         } else if (data.command === 'black_screen') {
+             setIsBlackScreen(prev => !prev);
+         } else if (data.command === 'show_logo') {
+             setIsShowLogo(prev => !prev);
+         } else if (data.command === 'clear_text') {
+             setIsClearText(prev => !prev);
+         }
+     };
+     return () => bc.close();
+  }, [serviceItems]);
 
   const toggleLive = () => {
      if (!isLive) {

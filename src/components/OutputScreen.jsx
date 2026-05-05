@@ -377,7 +377,8 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           const rawDiff = followerTimeRef.current - targetTime;
           const absDiff = Math.abs(rawDiff);
           
-          if (absDiff > 1.5) {
+          // Vimeo frequently ignores setPlaybackRate on standard accounts, so we must use a tighter hard-seek threshold for it.
+          if (absDiff > 1.5 || (payload.isVimeo && absDiff > 0.4)) {
              if (payload.isYouTube) sendIframeCommand('seekTo', [targetTime, true]);
              else sendVimeoCommand('setCurrentTime', targetTime);
              followerTimeRef.current = targetTime;
@@ -432,7 +433,8 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
     const isFollowerWindow = !isMaster;
     const isNetworkViewer = new URLSearchParams(window.location.search).get('network') === 'true';
-    const forceStandby = (isFollowerWindow && !payload?.isLive) || (isNetworkViewer && payload?.mediaType === 'audio');
+    const isNetworkAudioVideo = isNetworkViewer && (payload?.mediaType === 'audio' || payload?.mediaType === 'video');
+    const forceStandby = (isFollowerWindow && !payload?.isLive) || isNetworkAudioVideo;
     const hasMedia = payload?.activeMediaUrl || (payload?.activeSlide && payload?.activeSlide.length > 0);
     const isStandby = !payload || forceStandby || (!hasMedia && !payload?.isBlackScreen && !payload?.isShowLogo);
 
@@ -455,14 +457,30 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center w-[85%]">
-                    <h1 className="text-[min(10cqw,15cqh)] font-black tracking-[0.15em] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 uppercase drop-shadow-2xl leading-[1.1] text-balance">
-                       {payload?.churchName || "STANDBY"}
-                    </h1>
-                    {payload?.churchName && (
-                        <div className="flex flex-col items-center mt-[4cqh]">
-                            <div className="h-[2px] w-[12cqw] bg-blue-500/40 rounded-full mb-[3cqh]"></div>
-                            <span className="text-white/50 text-[min(2cqw,3cqh)] font-bold tracking-[0.3em] uppercase">Ready for broadcast</span>
-                        </div>
+                    {isNetworkAudioVideo ? (
+                        <>
+                            <div className="bg-blue-500/20 p-[3cqh] rounded-full mb-[4cqh] border border-blue-500/30">
+                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400 w-[8cqw] h-[8cqw] max-w-[80px] max-h-[80px]"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 8 6 4-6 4Z"/><line x1="3" x2="21" y1="3" y2="21"/></svg>
+                            </div>
+                            <h1 className="text-[min(6cqw,8cqh)] font-black tracking-[0.15em] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 uppercase drop-shadow-2xl leading-[1.2] text-center text-balance mb-[2cqh]">
+                               Media Not Streamed
+                            </h1>
+                            <p className="text-white/60 text-[min(2.5cqw,3cqh)] font-bold tracking-widest uppercase text-center max-w-[80%]">
+                               You are still connected. Playback is restricted to the main projector.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <h1 className="text-[min(10cqw,15cqh)] font-black tracking-[0.15em] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 uppercase drop-shadow-2xl leading-[1.1] text-balance text-center">
+                               {payload?.churchName || "STANDBY"}
+                            </h1>
+                            {payload?.churchName && (
+                                <div className="flex flex-col items-center mt-[4cqh]">
+                                    <div className="h-[2px] w-[12cqw] bg-blue-500/40 rounded-full mb-[3cqh]"></div>
+                                    <span className="text-white/50 text-[min(2cqw,3cqh)] font-bold tracking-[0.3em] uppercase text-center">Ready for broadcast</span>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
              </div>
