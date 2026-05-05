@@ -18,6 +18,7 @@ import { parseLiturgyMarkdown } from './utils/liturgyParser'
 import ConfirmModal from './components/ConfirmModal'
 import { verifyPermission, reResolveMedia, formatVerseRanges, getYoutubeEmbedUrl } from './utils/media'
 import OutputScreen from './components/OutputScreen'
+import CentralAudioPlayer from './components/CentralAudioPlayer'
 
 const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Music', 'Settings'];
 
@@ -1001,19 +1002,25 @@ function App() {
                   </div>
                ) : selectedItem?.type === 'audio' ? (
                    <div className="w-full h-full flex flex-col items-center justify-center bg-black rounded-2xl border border-neutral-800 p-12 shadow-inner overflow-hidden relative">
-                       <div className="flex flex-col items-center gap-8 max-w-md w-full">
+                       <div className="flex flex-col items-center gap-8 max-w-2xl w-full">
                            <div className="w-24 h-24 bg-purple-600/20 rounded-full flex items-center justify-center border border-purple-500/30">
                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-500"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                            </div>
                            <div className="text-center">
                                <h3 className="text-2xl font-black text-white tracking-widest mb-2 italic uppercase">{selectedItem.title}</h3>
-                               <p className="text-neutral-500 text-[10px] font-bold uppercase tracking-[0.3em]">Audio Track Preview</p>
                            </div>
-                           <audio src={selectedItem.url} controls className="w-full" />
+                           
+                           <CentralAudioPlayer 
+                               item={selectedItem}
+                               isLiveItem={liveItem?.id === selectedItem?.id}
+                               playbackStatus={playbackStatus}
+                               setPresentationPaused={setPresentationPaused}
+                           />
+                           
                            {activeTab !== 'Service' && (
                              <button 
                                onClick={handleAddToService}
-                               className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition shadow-xl border border-blue-400/20 active:scale-95 flex justify-center items-center gap-2"
+                               className="mt-4 w-full max-w-md bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition shadow-xl border border-blue-400/20 active:scale-95 flex justify-center items-center gap-2 mx-auto"
                              >
                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
                                Add Audio to Service

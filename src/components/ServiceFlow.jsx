@@ -109,23 +109,7 @@ export default function ServiceFlow({
               <div className="flex items-center gap-3 mt-1">
                  <div className="text-[10px] font-extrabold text-neutral-500 uppercase tracking-widest leading-none">{item.type || 'Media'}</div>
 
-                  {item.type === 'audio' && (
-                     <button
-                        onClick={(e) => {
-                           e.stopPropagation();
-                           onToggleSticky(item);
-                        }}
-                        className={`flex items-center gap-1.5 min-w-max px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
-                           stickyAudioId === item.id
-                              ? 'bg-purple-600 text-white shadow-lg border border-purple-400/50' 
-                              : 'bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-700/50'
-                        }`}
-                        title={stickyAudioId === item.id ? "Playing Persistent" : "Play as Persistent Audio"}
-                     >
-                        {stickyAudioId === item.id ? <Pause size={10} fill="currentColor" /> : <Play size={10} fill="currentColor" />}
-                        {stickyAudioId === item.id ? 'Playing' : 'Play'}
-                     </button>
-                  )}
+                  {/* The sticky audio play button was removed per user request */}
                  
                  {(item.type === 'video' || item.type === 'slide_deck') && (
                     <button
