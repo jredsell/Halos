@@ -132,22 +132,28 @@ export default function RemoteControl({ roomId }) {
            </div>
 
            {/* Quick Actions */}
-           <div className="flex items-center gap-2 mt-2 relative z-10">
+           <div className="flex flex-wrap items-center gap-2 mt-2 relative z-10">
+              <button 
+                onClick={() => sendCommand('toggle_live')} 
+                className={`flex-1 min-w-[80px] py-3 px-3 rounded-xl text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition shadow-md ${payload?.isLive ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/50' : 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/50'}`}
+              >
+                 <Presentation size={18} /> {payload?.isLive ? 'End Live' : 'Go Live'}
+              </button>
               <button 
                 onClick={() => sendCommand('black_screen')} 
-                className={`flex-1 py-3 px-3 rounded-xl text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition border ${payload?.isBlackScreen ? 'bg-amber-500/20 text-amber-400 border-amber-500/50' : 'bg-neutral-950 text-neutral-400 border-neutral-800 active:bg-neutral-800'}`}
+                className={`flex-1 min-w-[80px] py-3 px-3 rounded-xl text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition border ${payload?.isBlackScreen ? 'bg-amber-500/20 text-amber-400 border-amber-500/50' : 'bg-neutral-950 text-neutral-400 border-neutral-800 active:bg-neutral-800'}`}
               >
                  <MonitorOff size={18} /> Black
               </button>
               <button 
                 onClick={() => sendCommand('show_logo')} 
-                className={`flex-1 py-3 px-3 rounded-xl text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition border ${payload?.isShowLogo ? 'bg-blue-500/20 text-blue-400 border-blue-500/50' : 'bg-neutral-950 text-neutral-400 border-neutral-800 active:bg-neutral-800'}`}
+                className={`flex-1 min-w-[80px] py-3 px-3 rounded-xl text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition border ${payload?.isShowLogo ? 'bg-blue-500/20 text-blue-400 border-blue-500/50' : 'bg-neutral-950 text-neutral-400 border-neutral-800 active:bg-neutral-800'}`}
               >
                  <LayoutTemplate size={18} /> Logo
               </button>
               <button 
                 onClick={() => sendCommand('clear_text')} 
-                className={`flex-1 py-3 px-3 rounded-xl text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition border ${payload?.isClearText ? 'bg-purple-500/20 text-purple-400 border-purple-500/50' : 'bg-neutral-950 text-neutral-400 border-neutral-800 active:bg-neutral-800'}`}
+                className={`flex-1 min-w-[80px] py-3 px-3 rounded-xl text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition border ${payload?.isClearText ? 'bg-purple-500/20 text-purple-400 border-purple-500/50' : 'bg-neutral-950 text-neutral-400 border-neutral-800 active:bg-neutral-800'}`}
               >
                  <AlignLeft size={18} /> Clear
               </button>

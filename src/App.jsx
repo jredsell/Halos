@@ -248,7 +248,7 @@ function App() {
         // Listen for incoming remote commands
         conn.on('data', (data) => {
            if (data.type === 'remote_command') {
-              const bc = new BroadcastChannel('halos-projector-hub');
+              const bc = new BroadcastChannel('halos-remote-commands');
               bc.postMessage({ type: 'remote_command', ...data });
               bc.close();
            }
@@ -844,6 +844,26 @@ function App() {
              setIsShowLogo(prev => !prev);
          } else if (data.command === 'clear_text') {
              setIsClearText(prev => !prev);
+         } else if (data.command === 'toggle_live') {
+             setIsLive(prev => {
+                 if (!prev) {
+                     projectorWindowRef.current = window.open('?projector=true', 'HalosProjector', 'menubar=no,location=no,resizable=yes,scrollbars=no,status=no,width=1280,height=720');
+                     return true;
+                 } else {
+                     if (projectorWindowRef.current) projectorWindowRef.current.close();
+                     return false;
+                 }
+             });
+         } else if (data.command === 'play') {
+             setPresentationPaused(false);
+             const hub = new BroadcastChannel('halos-projector-hub');
+             hub.postMessage({ type: 'playback', command: 'play', source: 'remote', ts: Date.now() });
+             hub.close();
+         } else if (data.command === 'pause') {
+             setPresentationPaused(true);
+             const hub = new BroadcastChannel('halos-projector-hub');
+             hub.postMessage({ type: 'playback', command: 'pause', source: 'remote', ts: Date.now() });
+             hub.close();
          }
      };
      return () => bc.close();
