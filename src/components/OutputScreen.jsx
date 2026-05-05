@@ -357,7 +357,6 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (videoRef.current) {
           const v = videoRef.current;
           if (command === 'play') { 
-              if (isMaster) { v.muted = false; v.volume = 1; }
               v.play().catch(() => {}); 
           }
           if (command === 'pause') v.pause();
@@ -419,7 +418,8 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     }, [payload?.currentTime, payload?.isPaused, isMaster]);
 
     const isFollowerWindow = !isMaster;
-    const forceStandby = isFollowerWindow && !payload?.isLive;
+    const isNetworkViewer = new URLSearchParams(window.location.search).get('network') === 'true';
+    const forceStandby = (isFollowerWindow && !payload?.isLive) || (isNetworkViewer && payload?.mediaType === 'audio');
     const hasMedia = payload?.activeMediaUrl || (payload?.activeSlide && payload?.activeSlide.length > 0);
     const isStandby = !payload || forceStandby || (!hasMedia && !payload?.isBlackScreen && !payload?.isShowLogo);
 

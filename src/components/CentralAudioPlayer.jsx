@@ -23,6 +23,7 @@ export default function CentralAudioPlayer({
         setLocalTime(0);
         setLocalDuration(0);
         setLocalPaused(true);
+        setLocalVolume(1);
     }, [item?.url]);
 
     // Sync with live output
