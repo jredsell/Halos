@@ -86,7 +86,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     const videoRef = useRef(null);
     const stickyAudioRef = useRef(null);
     const iframeRef = useRef(null);
-    const [hasInteracted, setHasInteracted] = useState(false);
+    const [hasInteracted, setHasInteracted] = useState(isMaster);
 
     // Network Viewers (payload.isNetworkViewer) MUST be kept muted permanently to ensure continuous mobile silent autoplay.
     const isMuted = muteAudio || !isMaster;
@@ -463,14 +463,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
             );
         }
 
-        // Show the "Restore Audio" overlay ONLY when:
-        // - This is a master instance (projector popup or dashboard preview)
-        // - The video is YouTube or Vimeo
-        // - The user hasn't interacted yet
-        const needsAudioRestore = isMaster
-            && !muteAudio
-            && !hasInteracted
-            && (payload.mediaType === 'video' && (payload.isYouTube || payload.isVimeo));
+
 
         return (
            <>
@@ -615,15 +608,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                  />
               )}
 
-              {needsAudioRestore && (
-                 <div className="absolute inset-0 bg-blue-600/30 backdrop-blur-xl z-50 flex flex-col items-center justify-center text-white p-12 cursor-pointer" onClick={() => forceUnmute()}>
-                    <div className="bg-blue-600 p-8 rounded-full mb-6 animate-bounce shadow-2xl">
-                       <Volume2 size={64} fill="currentColor" />
-                    </div>
-                    <h2 className="text-4xl font-black uppercase tracking-widest text-center">Restore Audio</h2>
-                    <p className="mt-4 text-white/80 font-bold uppercase tracking-widest text-sm text-center">Click to enable audio on this projector</p>
-                 </div>
-              )}
+
            </>
         );
     };
