@@ -339,7 +339,15 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        }
 
        if (payload?.isYouTube) {
-          if (command === 'play') sendIframeCommand('playVideo');
+          if (command === 'play') {
+             sendIframeCommand('playVideo');
+             if (isMaster && !muteAudio) {
+                setTimeout(() => {
+                   sendIframeCommand('unMute');
+                   sendIframeCommand('setVolume', [100]);
+                }, 100);
+             }
+          }
           if (command === 'pause') sendIframeCommand('pauseVideo');
           if (command === 'seek') {
              sendIframeCommand('seekTo', [value, true]);
@@ -351,7 +359,13 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
              sendIframeCommand('setVolume', [value * 100]);
           }
        } else if (payload?.isVimeo) {
-          if (command === 'play') sendVimeoCommand('play');
+          if (command === 'play') {
+             sendVimeoCommand('play');
+             if (isMaster && !muteAudio) {
+                sendVimeoCommand('setMuted', false);
+                sendVimeoCommand('setVolume', 1);
+             }
+          }
           if (command === 'pause') sendVimeoCommand('pause');
           if (command === 'seek') {
              sendVimeoCommand('setCurrentTime', value);

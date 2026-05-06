@@ -640,60 +640,61 @@ function App() {
   }, [selectedItem, activeSlideIndex]);
 
   // Control Actions
-  const handleSelectItem = async (item) => {
-    if (item.type === 'new_song') {
-       setSelectedItem(item);
-       setActiveTab('new_song');
-       return;
-    }
-    if (item.type === 'new_liturgy') {
-       setSelectedItem(item);
-       setActiveTab('new_liturgy');
-       return;
-    }
-    if (item.type === 'liturgy') {
-       // Re-parse to ensure slides are fresh
-       let fresh = item;
-       if (item.rawText) {
-         const parsed = parseLiturgyMarkdown(item.rawText, linesPerSlide);
-         fresh = { ...item, slides: parsed.slides };
+    const handleSelectItem = async (item, forceLive = false) => {
+      if (item.type === 'new_song') {
+         setSelectedItem(item);
+         setActiveTab('new_song');
+         return;
+      }
+      if (item.type === 'new_liturgy') {
+         setSelectedItem(item);
+         setActiveTab('new_liturgy');
+         return;
+      }
+      if (item.type === 'liturgy') {
+         // Re-parse to ensure slides are fresh
+         let fresh = item;
+         if (item.rawText) {
+           const parsed = parseLiturgyMarkdown(item.rawText, linesPerSlide);
+           fresh = { ...item, slides: parsed.slides };
+         }
+         setSelectedItem(fresh);
+         // If selecting from Service tab, set live output but stay on Service view
+         if (activeTab === 'Service' || forceLive) {
+           setRemoteCommand(null);
+           setLiveItem(fresh);
+           setLiveSlideIndex(0);
+           setPlayedItems(prev => new Set(prev).add(fresh.id));
+         }
+         // Only switch to Liturgy tab if we're being called from the Liturgy sidebar
+         if (activeTab === 'Liturgy') {
+           // show editor
+         }
+         setActiveSlideIndex(0);
+         setSelectedIndices(new Set());
+         setIsClearText(false);
+         return;
+      }
+      
+      let itemToView = { ...item };
+      
+      // Self-healing: If it's a service item with media, re-resolve URLs from library instantly
+      if (libraryHandle && (item.type === 'video' || item.type === 'image' || item.type === 'slide_deck' || item.type === 'audio')) {
+         const resolved = await reResolveMedia([item], libraryHandle);
+         if (resolved && resolved[0]) itemToView = resolved[0];
+      }
+  
+       // Always re-parse songs and liturgy so linesPerSlide is respected
+       if ((item.type === 'song' || item.type === 'liturgy') && item.rawText) {
+          const parsed = item.type === 'song' 
+            ? parseSongMarkdown(item.rawText, linesPerSlide)
+            : parseLiturgyMarkdown(item.rawText, linesPerSlide);
+          itemToView = { ...item, slides: parsed.slides };
        }
-       setSelectedItem(fresh);
-       // If selecting from Service tab, set live output but stay on Service view
-       if (activeTab === 'Service') {
-         setLiveItem(fresh);
-         setLiveSlideIndex(0);
-         setPlayedItems(prev => new Set(prev).add(fresh.id));
-       }
-       // Only switch to Liturgy tab if we're being called from the Liturgy sidebar
-       // (not from service — let the service stay focused)
-       if (activeTab === 'Liturgy') {
-         // show editor — tab is already Liturgy
-       }
-       setActiveSlideIndex(0);
-       setSelectedIndices(new Set());
-       setIsClearText(false);
-       return;
-    }
-    
-    let itemToView = { ...item };
-    
-    // Self-healing: If it's a service item with media, re-resolve URLs from library instantly
-    if (libraryHandle && (item.type === 'video' || item.type === 'image' || item.type === 'slide_deck' || item.type === 'audio')) {
-       const resolved = await reResolveMedia([item], libraryHandle);
-       if (resolved && resolved[0]) itemToView = resolved[0];
-    }
-
-     // Always re-parse songs and liturgy so linesPerSlide is respected
-     if ((item.type === 'song' || item.type === 'liturgy') && item.rawText) {
-        const parsed = item.type === 'song' 
-          ? parseSongMarkdown(item.rawText, linesPerSlide)
-          : parseLiturgyMarkdown(item.rawText, linesPerSlide);
-        itemToView = { ...item, slides: parsed.slides };
-     }
-    // Decoupled Seleciton: Only update Live Output if selecting from the Service tab
-    if (activeTab === 'Service') {
-       setLiveItem(itemToView);
+      // Decoupled Seleciton: Only update Live Output if selecting from the Service tab
+      if (activeTab === 'Service' || forceLive) {
+         setRemoteCommand(null);
+         setLiveItem(itemToView);
        setLiveSlideIndex(0);
        setPlayedItems(prev => new Set(prev).add(itemToView.id));
        
@@ -841,7 +842,7 @@ function App() {
              const item = serviceItems.find(i => i.id === data.itemId);
              if (item) {
                  setActiveTab('Service');
-                 handleSelectItem(item);
+                 handleSelectItem(item, true);
              }
          } else if (data.command === 'next_slide') {
              const currentLive = liveItemRef.current;
@@ -890,12 +891,10 @@ function App() {
                  }
              });
          } else if (data.command === 'play') {
-             setPresentationPaused(false);
              const hub = new BroadcastChannel('halos-projector-hub');
              hub.postMessage({ type: 'playback', command: 'play', source: 'remote', ts: Date.now() });
              hub.close();
          } else if (data.command === 'pause') {
-             setPresentationPaused(true);
              const hub = new BroadcastChannel('halos-projector-hub');
              hub.postMessage({ type: 'playback', command: 'pause', source: 'remote', ts: Date.now() });
              hub.close();
