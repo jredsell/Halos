@@ -18,7 +18,7 @@ export default function RemoteControl({ roomId }) {
     peerRef.current = peer;
 
     peer.on('open', () => {
-      const conn = peer.connect('halos-' + roomId, { reliable: true });
+      const conn = peer.connect('halos-' + roomId, { reliable: true, metadata: { type: 'remote' } });
       connRef.current = conn;
 
       conn.on('open', () => {

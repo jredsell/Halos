@@ -317,7 +317,9 @@ function App() {
         lastUploadedRef.current = targetUrl;
         setIsSyncingMedia(true);
         connectionsRef.current.forEach(conn => {
-            conn.send({ type: 'sync-start', id: targetUrl });
+            if (conn.metadata?.type !== 'remote') {
+                conn.send({ type: 'sync-start', id: targetUrl });
+            }
         });
 
         try {
@@ -335,7 +337,9 @@ function App() {
           await new Promise(r => setTimeout(r, 150));
 
           connectionsRef.current.forEach(conn => {
-              conn.send({ type: 'media', id: targetUrl, data: buffer, mime: blob.type });
+              if (conn.metadata?.type !== 'remote') {
+                  conn.send({ type: 'media', id: targetUrl, data: buffer, mime: blob.type });
+              }
           });
           
           setSyncedMediaUrl(targetUrl);
@@ -344,7 +348,9 @@ function App() {
         }
         
         connectionsRef.current.forEach(conn => {
-            conn.send({ type: 'sync-end', id: targetUrl });
+            if (conn.metadata?.type !== 'remote') {
+                conn.send({ type: 'sync-end', id: targetUrl });
+            }
         });
         setIsSyncingMedia(false);
       }
