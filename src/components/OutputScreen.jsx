@@ -114,6 +114,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     const lastSentPauseRef = useRef(null);
     const isMutingReports = useRef(false);
     const isVimeoReady = useRef(false);
+    const pendingPlayCommandRef = useRef(false);
 
     // 1. URL/Mute Engine
     const iframeSrc = useMemo(() => {
@@ -223,6 +224,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (!payload?.activeMediaUrl) return;
        if (!payload.isYouTube && !payload.isVimeo) return;
 
+       pendingPlayCommandRef.current = false;
        let isYouTubeListening = false;
        let lastStatusTs = 0;
        let lastPaused = null;
@@ -243,6 +245,14 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                    const duration = info.duration ?? followerDurationRef.current;
                    const paused = info.playerState !== undefined ? (info.playerState !== 1 && info.playerState !== 3) : followerPausedRef.current;
                    followerPausedRef.current = paused;
+                   
+                   // Force unmute when transitioning to play if it's the master and we have a pending play command
+                   if (info.playerState === 1 && pendingPlayCommandRef.current && isMaster && !muteAudio && !isMutingReports.current) {
+                       sendIframeCommand('unMute');
+                       sendIframeCommand('setVolume', [100]);
+                       pendingPlayCommandRef.current = false;
+                   }
+
                    if (duration > 0) {
                       const now = Date.now();
                       if (now - lastStatusTs > 500 || paused !== lastPaused) {
@@ -272,7 +282,14 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                       sendVimeoCommand('setVolume', 1);
                    }
                    
-                   if (!followerPausedRef.current) sendVimeoCommand('play');
+                   if (!followerPausedRef.current || pendingPlayCommandRef.current) {
+                      sendVimeoCommand('play');
+                      if (isMaster && !muteAudio) {
+                         sendVimeoCommand('setMuted', false);
+                         sendVimeoCommand('setVolume', 1);
+                      }
+                      pendingPlayCommandRef.current = false;
+                   }
                 }
                 if (eventName === 'timeupdate' && data.data) {
                    const time = data.data.seconds;
@@ -332,6 +349,9 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (!remoteCommand) return;
        const { command, value } = remoteCommand;
 
+       if (command === 'play') pendingPlayCommandRef.current = true;
+       if (command === 'pause') pendingPlayCommandRef.current = false;
+
        // Any play command triggers play naturally. forceUnmute is handled by interaction listeners.
        if (isMaster && command === 'pause') {
            followerPausedRef.current = true;
@@ -341,12 +361,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (payload?.isYouTube) {
           if (command === 'play') {
              sendIframeCommand('playVideo');
-             if (isMaster && !muteAudio) {
-                setTimeout(() => {
-                   sendIframeCommand('unMute');
-                   sendIframeCommand('setVolume', [100]);
-                }, 100);
-             }
+             // The actual unMute will fire when onStateChange reports playerState = 1
           }
           if (command === 'pause') sendIframeCommand('pauseVideo');
           if (command === 'seek') {
@@ -381,6 +396,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (videoRef.current) {
           const v = videoRef.current;
           if (command === 'play') { 
+              if (isMaster && !muteAudio) { v.muted = false; v.volume = 1; }
               v.play().catch(() => {}); 
           }
           if (command === 'pause') v.pause();
