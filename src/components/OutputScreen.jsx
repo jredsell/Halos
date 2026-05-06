@@ -126,13 +126,22 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        if (payload.isVimeo) {
           urlObj.searchParams.set('api', '1');
           urlObj.searchParams.set('player_id', 'halos-vimeo');
-          urlObj.searchParams.set('autopause', '0');
        }
        urlObj.searchParams.set('controls', '0');
-       urlObj.searchParams.set('rel', '0');
+       urlObj.searchParams.set('disablekb', '1');
+       urlObj.searchParams.set('fs', '0');
        urlObj.searchParams.set('modestbranding', '1');
+       urlObj.searchParams.set('playsinline', '1');
+       urlObj.searchParams.set('autopause', '0');
        urlObj.searchParams.set('iv_load_policy', '3');
        urlObj.searchParams.set('origin', window.location.origin);
+       
+       if (payload.isYouTube) {
+          urlObj.searchParams.set('mute', isMaster && !muteAudio ? '0' : '1');
+       }
+       if (payload.isVimeo) {
+          urlObj.searchParams.set('muted', isMaster && !muteAudio ? '0' : '1');
+       }
 
        // For master (projector/preview): respect the item's autoPlay setting.
        // For followers (network view): autoplay only if the master is actively playing.
@@ -142,10 +151,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           urlObj.searchParams.set('autoplay', payload.itemAutoPlay ? '1' : '0');
        }
 
-       // YouTube & Vimeo must start muted (browser autoplay policy).
-       // We unmute via API after the first user interaction / play command.
-       if (payload.isYouTube) urlObj.searchParams.set('mute', '1');
-       if (payload.isVimeo) urlObj.searchParams.set('muted', '1');
+
 
        return urlObj.toString();
     }, [payload?.activeMediaUrl, isMaster, payload?.isYouTube, payload?.isVimeo, payload?.itemAutoPlay]);
