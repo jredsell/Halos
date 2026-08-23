@@ -1,85 +1,86 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { fetchBiblePassage, fetchLocalBiblePassage } from '../services/bibleService';
+import { fetchYouVersionPassage, fetchLocalBiblePassage, fetchBibleVersions } from '../services/bibleService';
 import { Book, Search, Loader2, ChevronRight, ChevronLeft, X } from 'lucide-react';
 
 // Complete Bible book data with chapter counts
 const BIBLE_BOOKS = [
   // Old Testament
-  { name: 'Genesis', abbr: 'Gen', chapters: 50, testament: 'OT' },
-  { name: 'Exodus', abbr: 'Exod', chapters: 40, testament: 'OT' },
-  { name: 'Leviticus', abbr: 'Lev', chapters: 27, testament: 'OT' },
-  { name: 'Numbers', abbr: 'Num', chapters: 36, testament: 'OT' },
-  { name: 'Deuteronomy', abbr: 'Deut', chapters: 34, testament: 'OT' },
-  { name: 'Joshua', abbr: 'Josh', chapters: 24, testament: 'OT' },
-  { name: 'Judges', abbr: 'Judg', chapters: 21, testament: 'OT' },
-  { name: 'Ruth', abbr: 'Ruth', chapters: 4, testament: 'OT' },
-  { name: '1 Samuel', abbr: '1Sam', chapters: 31, testament: 'OT' },
-  { name: '2 Samuel', abbr: '2Sam', chapters: 24, testament: 'OT' },
-  { name: '1 Kings', abbr: '1Kgs', chapters: 22, testament: 'OT' },
-  { name: '2 Kings', abbr: '2Kgs', chapters: 25, testament: 'OT' },
-  { name: '1 Chronicles', abbr: '1Chr', chapters: 29, testament: 'OT' },
-  { name: '2 Chronicles', abbr: '2Chr', chapters: 36, testament: 'OT' },
-  { name: 'Ezra', abbr: 'Ezra', chapters: 10, testament: 'OT' },
-  { name: 'Nehemiah', abbr: 'Neh', chapters: 13, testament: 'OT' },
-  { name: 'Esther', abbr: 'Esth', chapters: 10, testament: 'OT' },
-  { name: 'Job', abbr: 'Job', chapters: 42, testament: 'OT' },
-  { name: 'Psalms', abbr: 'Ps', chapters: 150, testament: 'OT' },
-  { name: 'Proverbs', abbr: 'Prov', chapters: 31, testament: 'OT' },
-  { name: 'Ecclesiastes', abbr: 'Eccl', chapters: 12, testament: 'OT' },
-  { name: 'Song of Solomon', abbr: 'Song', chapters: 8, testament: 'OT' },
-  { name: 'Isaiah', abbr: 'Isa', chapters: 66, testament: 'OT' },
-  { name: 'Jeremiah', abbr: 'Jer', chapters: 52, testament: 'OT' },
-  { name: 'Lamentations', abbr: 'Lam', chapters: 5, testament: 'OT' },
-  { name: 'Ezekiel', abbr: 'Ezek', chapters: 48, testament: 'OT' },
-  { name: 'Daniel', abbr: 'Dan', chapters: 12, testament: 'OT' },
-  { name: 'Hosea', abbr: 'Hos', chapters: 14, testament: 'OT' },
-  { name: 'Joel', abbr: 'Joel', chapters: 3, testament: 'OT' },
-  { name: 'Amos', abbr: 'Amos', chapters: 9, testament: 'OT' },
-  { name: 'Obadiah', abbr: 'Obad', chapters: 1, testament: 'OT' },
-  { name: 'Jonah', abbr: 'Jonah', chapters: 4, testament: 'OT' },
-  { name: 'Micah', abbr: 'Mic', chapters: 7, testament: 'OT' },
-  { name: 'Nahum', abbr: 'Nah', chapters: 3, testament: 'OT' },
-  { name: 'Habakkuk', abbr: 'Hab', chapters: 3, testament: 'OT' },
-  { name: 'Zephaniah', abbr: 'Zeph', chapters: 3, testament: 'OT' },
-  { name: 'Haggai', abbr: 'Hag', chapters: 2, testament: 'OT' },
-  { name: 'Zechariah', abbr: 'Zech', chapters: 14, testament: 'OT' },
-  { name: 'Malachi', abbr: 'Mal', chapters: 4, testament: 'OT' },
+  { name: 'Genesis', abbr: 'Gen', usfm: 'GEN', chapters: 50, testament: 'OT' },
+  { name: 'Exodus', abbr: 'Exod', usfm: 'EXO', chapters: 40, testament: 'OT' },
+  { name: 'Leviticus', abbr: 'Lev', usfm: 'LEV', chapters: 27, testament: 'OT' },
+  { name: 'Numbers', abbr: 'Num', usfm: 'NUM', chapters: 36, testament: 'OT' },
+  { name: 'Deuteronomy', abbr: 'Deut', usfm: 'DEU', chapters: 34, testament: 'OT' },
+  { name: 'Joshua', abbr: 'Josh', usfm: 'JOS', chapters: 24, testament: 'OT' },
+  { name: 'Judges', abbr: 'Judg', usfm: 'JDG', chapters: 21, testament: 'OT' },
+  { name: 'Ruth', abbr: 'Ruth', usfm: 'RUT', chapters: 4, testament: 'OT' },
+  { name: '1 Samuel', abbr: '1Sam', usfm: '1SA', chapters: 31, testament: 'OT' },
+  { name: '2 Samuel', abbr: '2Sam', usfm: '2SA', chapters: 24, testament: 'OT' },
+  { name: '1 Kings', abbr: '1Kgs', usfm: '1KI', chapters: 22, testament: 'OT' },
+  { name: '2 Kings', abbr: '2Kgs', usfm: '2KI', chapters: 25, testament: 'OT' },
+  { name: '1 Chronicles', abbr: '1Chr', usfm: '1CH', chapters: 29, testament: 'OT' },
+  { name: '2 Chronicles', abbr: '2Chr', usfm: '2CH', chapters: 36, testament: 'OT' },
+  { name: 'Ezra', abbr: 'Ezra', usfm: 'EZR', chapters: 10, testament: 'OT' },
+  { name: 'Nehemiah', abbr: 'Neh', usfm: 'NEH', chapters: 13, testament: 'OT' },
+  { name: 'Esther', abbr: 'Esth', usfm: 'EST', chapters: 10, testament: 'OT' },
+  { name: 'Job', abbr: 'Job', usfm: 'JOB', chapters: 42, testament: 'OT' },
+  { name: 'Psalms', abbr: 'Ps', usfm: 'PSA', chapters: 150, testament: 'OT' },
+  { name: 'Proverbs', abbr: 'Prov', usfm: 'PRO', chapters: 31, testament: 'OT' },
+  { name: 'Ecclesiastes', abbr: 'Eccl', usfm: 'ECC', chapters: 12, testament: 'OT' },
+  { name: 'Song of Solomon', abbr: 'Song', usfm: 'SNG', chapters: 8, testament: 'OT' },
+  { name: 'Isaiah', abbr: 'Isa', usfm: 'ISA', chapters: 66, testament: 'OT' },
+  { name: 'Jeremiah', abbr: 'Jer', usfm: 'JER', chapters: 52, testament: 'OT' },
+  { name: 'Lamentations', abbr: 'Lam', usfm: 'LAM', chapters: 5, testament: 'OT' },
+  { name: 'Ezekiel', abbr: 'Ezek', usfm: 'EZK', chapters: 48, testament: 'OT' },
+  { name: 'Daniel', abbr: 'Dan', usfm: 'DAN', chapters: 12, testament: 'OT' },
+  { name: 'Hosea', abbr: 'Hos', usfm: 'HOS', chapters: 14, testament: 'OT' },
+  { name: 'Joel', abbr: 'Joel', usfm: 'JOL', chapters: 3, testament: 'OT' },
+  { name: 'Amos', abbr: 'Amos', usfm: 'AMO', chapters: 9, testament: 'OT' },
+  { name: 'Obadiah', abbr: 'Obad', usfm: 'OBA', chapters: 1, testament: 'OT' },
+  { name: 'Jonah', abbr: 'Jonah', usfm: 'JON', chapters: 4, testament: 'OT' },
+  { name: 'Micah', abbr: 'Mic', usfm: 'MIC', chapters: 7, testament: 'OT' },
+  { name: 'Nahum', abbr: 'Nah', usfm: 'NAM', chapters: 3, testament: 'OT' },
+  { name: 'Habakkuk', abbr: 'Hab', usfm: 'HAB', chapters: 3, testament: 'OT' },
+  { name: 'Zephaniah', abbr: 'Zeph', usfm: 'ZEP', chapters: 3, testament: 'OT' },
+  { name: 'Haggai', abbr: 'Hag', usfm: 'HAG', chapters: 2, testament: 'OT' },
+  { name: 'Zechariah', abbr: 'Zech', usfm: 'ZEC', chapters: 14, testament: 'OT' },
+  { name: 'Malachi', abbr: 'Mal', usfm: 'MAL', chapters: 4, testament: 'OT' },
   // New Testament
-  { name: 'Matthew', abbr: 'Matt', chapters: 28, testament: 'NT' },
-  { name: 'Mark', abbr: 'Mark', chapters: 16, testament: 'NT' },
-  { name: 'Luke', abbr: 'Luke', chapters: 24, testament: 'NT' },
-  { name: 'John', abbr: 'John', chapters: 21, testament: 'NT' },
-  { name: 'Acts', abbr: 'Acts', chapters: 28, testament: 'NT' },
-  { name: 'Romans', abbr: 'Rom', chapters: 16, testament: 'NT' },
-  { name: '1 Corinthians', abbr: '1Cor', chapters: 16, testament: 'NT' },
-  { name: '2 Corinthians', abbr: '2Cor', chapters: 13, testament: 'NT' },
-  { name: 'Galatians', abbr: 'Gal', chapters: 6, testament: 'NT' },
-  { name: 'Ephesians', abbr: 'Eph', chapters: 6, testament: 'NT' },
-  { name: 'Philippians', abbr: 'Phil', chapters: 4, testament: 'NT' },
-  { name: 'Colossians', abbr: 'Col', chapters: 4, testament: 'NT' },
-  { name: '1 Thessalonians', abbr: '1Thess', chapters: 5, testament: 'NT' },
-  { name: '2 Thessalonians', abbr: '2Thess', chapters: 3, testament: 'NT' },
-  { name: '1 Timothy', abbr: '1Tim', chapters: 6, testament: 'NT' },
-  { name: '2 Timothy', abbr: '2Tim', chapters: 4, testament: 'NT' },
-  { name: 'Titus', abbr: 'Titus', chapters: 3, testament: 'NT' },
-  { name: 'Philemon', abbr: 'Phlm', chapters: 1, testament: 'NT' },
-  { name: 'Hebrews', abbr: 'Heb', chapters: 13, testament: 'NT' },
-  { name: 'James', abbr: 'Jas', chapters: 5, testament: 'NT' },
-  { name: '1 Peter', abbr: '1Pet', chapters: 5, testament: 'NT' },
-  { name: '2 Peter', abbr: '2Pet', chapters: 3, testament: 'NT' },
-  { name: '1 John', abbr: '1John', chapters: 5, testament: 'NT' },
-  { name: '2 John', abbr: '2John', chapters: 1, testament: 'NT' },
-  { name: '3 John', abbr: '3John', chapters: 1, testament: 'NT' },
-  { name: 'Jude', abbr: 'Jude', chapters: 1, testament: 'NT' },
-  { name: 'Revelation', abbr: 'Rev', chapters: 22, testament: 'NT' },
+  { name: 'Matthew', abbr: 'Matt', usfm: 'MAT', chapters: 28, testament: 'NT' },
+  { name: 'Mark', abbr: 'Mark', usfm: 'MRK', chapters: 16, testament: 'NT' },
+  { name: 'Luke', abbr: 'Luke', usfm: 'LUK', chapters: 24, testament: 'NT' },
+  { name: 'John', abbr: 'John', usfm: 'JHN', chapters: 21, testament: 'NT' },
+  { name: 'Acts', abbr: 'Acts', usfm: 'ACT', chapters: 28, testament: 'NT' },
+  { name: 'Romans', abbr: 'Rom', usfm: 'ROM', chapters: 16, testament: 'NT' },
+  { name: '1 Corinthians', abbr: '1Cor', usfm: '1CO', chapters: 16, testament: 'NT' },
+  { name: '2 Corinthians', abbr: '2Cor', usfm: '2CO', chapters: 13, testament: 'NT' },
+  { name: 'Galatians', abbr: 'Gal', usfm: 'GAL', chapters: 6, testament: 'NT' },
+  { name: 'Ephesians', abbr: 'Eph', usfm: 'EPH', chapters: 6, testament: 'NT' },
+  { name: 'Philippians', abbr: 'Phil', usfm: 'PHP', chapters: 4, testament: 'NT' },
+  { name: 'Colossians', abbr: 'Col', usfm: 'COL', chapters: 4, testament: 'NT' },
+  { name: '1 Thessalonians', abbr: '1Thess', usfm: '1TH', chapters: 5, testament: 'NT' },
+  { name: '2 Thessalonians', abbr: '2Thess', usfm: '2TH', chapters: 3, testament: 'NT' },
+  { name: '1 Timothy', abbr: '1Tim', usfm: '1TI', chapters: 6, testament: 'NT' },
+  { name: '2 Timothy', abbr: '2Tim', usfm: '2TI', chapters: 4, testament: 'NT' },
+  { name: 'Titus', abbr: 'Titus', usfm: 'TIT', chapters: 3, testament: 'NT' },
+  { name: 'Philemon', abbr: 'Phlm', usfm: 'PHM', chapters: 1, testament: 'NT' },
+  { name: 'Hebrews', abbr: 'Heb', usfm: 'HEB', chapters: 13, testament: 'NT' },
+  { name: 'James', abbr: 'Jas', usfm: 'JAS', chapters: 5, testament: 'NT' },
+  { name: '1 Peter', abbr: '1Pet', usfm: '1PE', chapters: 5, testament: 'NT' },
+  { name: '2 Peter', abbr: '2Pet', usfm: '2PE', chapters: 3, testament: 'NT' },
+  { name: '1 John', abbr: '1John', usfm: '1JN', chapters: 5, testament: 'NT' },
+  { name: '2 John', abbr: '2John', usfm: '2JN', chapters: 1, testament: 'NT' },
+  { name: '3 John', abbr: '3John', usfm: '3JN', chapters: 1, testament: 'NT' },
+  { name: 'Jude', abbr: 'Jude', usfm: 'JUD', chapters: 1, testament: 'NT' },
+  { name: 'Revelation', abbr: 'Rev', usfm: 'REV', chapters: 22, testament: 'NT' },
 ];
 
-export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocument }) {
+export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocument, youVersionApiKey }) {
   const [reference, setReference] = useState('');
-  const [translation, setTranslation] = useState('kjv');
+  const [translation, setTranslation] = useState('1'); // Default to KJV YouVersion ID (1)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [localTranslations, setLocalTranslations] = useState([]);
+  const [onlineTranslations, setOnlineTranslations] = useState([]);
 
   // Autocomplete state
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -91,6 +92,25 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
   const [browseBook, setBrowseBook] = useState(null); // selected book object or null
   const [showBrowser, setShowBrowser] = useState(false);
   const browserRef = useRef(null);
+
+  // Fetch online translations if API key is provided
+  useEffect(() => {
+    if (youVersionApiKey) {
+      fetchBibleVersions(youVersionApiKey)
+        .then(bibles => {
+          setOnlineTranslations(bibles);
+          // Auto-select a default if the current selection is a local one but we just loaded online ones
+          if (bibles.length > 0 && !localTranslations.includes(translation)) {
+            // Find KJV (1) or just use the first
+            const defaultBible = bibles.find(b => b.id === 1) || bibles[0];
+            setTranslation(defaultBible.id.toString());
+          }
+        })
+        .catch(err => console.error("Failed to fetch YouVersion bibles:", err));
+    } else {
+      setOnlineTranslations([]);
+    }
+  }, [youVersionApiKey]);
 
   useEffect(() => {
     const scanLocalBibles = async () => {
@@ -136,6 +156,32 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
     ).slice(0, 8);
   }, [reference]);
 
+  const parseReferenceToYouVersion = (ref) => {
+    const match = ref.trim().match(/^(.+?)\s+(\d+)(?::(\d+))?(?:\s*-\s*(\d+)(?::(\d+))?)?$/);
+    if (!match) return null;
+    const bookStr = match[1].toLowerCase();
+    const book = BIBLE_BOOKS.find(b => b.name.toLowerCase() === bookStr || b.abbr.toLowerCase() === bookStr);
+    if (!book) return null;
+    
+    const ch = match[2];
+    const vStart = match[3];
+    const end1 = match[4];
+    const end2 = match[5];
+    
+    const usfm = book.usfm;
+    if (!vStart) {
+      if (!end1) return `${usfm}.${ch}`; 
+      return `${usfm}.${ch}-${usfm}.${end1}`; 
+    }
+    if (!end1) {
+      return `${usfm}.${ch}.${vStart}`; 
+    }
+    if (!end2) {
+      return `${usfm}.${ch}.${vStart}-${usfm}.${ch}.${end1}`; 
+    }
+    return `${usfm}.${ch}.${vStart}-${usfm}.${end1}.${end2}`; 
+  };
+
   const handleSearch = async (refOverride) => {
     const ref = refOverride || reference.trim();
     if (!ref || !libraryHandle) return;
@@ -150,7 +196,14 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
       if (isLocal) {
          data = await fetchLocalBiblePassage(libraryHandle, translation, ref);
       } else {
-         data = await fetchBiblePassage(libraryHandle, ref, translation);
+         if (!youVersionApiKey) {
+           throw new Error("YouVersion API key is missing. Add it in Settings or select a local offline Bible.");
+         }
+         const yvRef = parseReferenceToYouVersion(ref);
+         if (!yvRef) throw new Error("Invalid reference format or unknown book.");
+         data = await fetchYouVersionPassage(youVersionApiKey, translation, yvRef);
+         // Ensure the human readable reference matches what the user typed/intended
+         data.reference = ref;
       }
 
       if (onSelectDocument) {
@@ -221,12 +274,27 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
         onChange={(e) => setTranslation(e.target.value)}
         className="w-full bg-neutral-900 border border-neutral-800 rounded-xl text-sm font-bold text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition shadow-inner appearance-none cursor-pointer"
       >
-        <option value="kjv">KJV - King James Version</option>
-        <option value="web">WEB - World English Bible</option>
-        <option value="bbe">BBE - Bible in Basic English</option>
-        {localTranslations.map(lt => (
-          <option key={lt} value={lt}>{lt.toUpperCase()} (Local Library)</option>
-        ))}
+        {onlineTranslations.length > 0 ? (
+          <optgroup label="Online (YouVersion)">
+            {onlineTranslations.map(lt => (
+              <option key={lt.id} value={lt.id.toString()}>
+                {lt.abbreviation} - {lt.title}
+              </option>
+            ))}
+          </optgroup>
+        ) : (
+          <optgroup label="Online Bibles">
+            <option value="1" disabled>YouVersion API Key Required</option>
+          </optgroup>
+        )}
+        
+        {localTranslations.length > 0 && (
+          <optgroup label="Local Bibles (Offline)">
+            {localTranslations.map(lt => (
+              <option key={lt} value={lt}>{lt.toUpperCase()}</option>
+            ))}
+          </optgroup>
+        )}
       </select>
       
       {/* Search Input with Autocomplete */}

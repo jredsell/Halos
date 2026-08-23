@@ -37,7 +37,9 @@ export default function Sidebar({
   setChurchName,
   stickyAudioId,
   onToggleSticky,
-  onChangeLibrary
+  onChangeLibrary,
+  youVersionApiKey,
+  setYouVersionApiKey
 }) {
   const [localQuery, setLocalQuery] = useState('');
   const [showAdded, setShowAdded] = useState(false);
@@ -348,7 +350,14 @@ export default function Sidebar({
 
   // 0. Settings View
   if (activeTab === 'Settings') {
-    return <SettingsView roomId={roomId} churchName={churchName} setChurchName={setChurchName} onChangeLibrary={onChangeLibrary} />;
+    return <SettingsView 
+      roomId={roomId} 
+      churchName={churchName} 
+      setChurchName={setChurchName} 
+      onChangeLibrary={onChangeLibrary} 
+      youVersionApiKey={youVersionApiKey}
+      setYouVersionApiKey={setYouVersionApiKey}
+    />;
   }
 
   // 0b. Liturgy View
@@ -494,7 +503,12 @@ export default function Sidebar({
   if (activeTab === 'Bible') {
     return (
       <div className="flex flex-col h-full w-full gap-4 pt-2">
-        <BibleModule libraryHandle={libraryHandle} systemTrigger={systemTrigger} onSelectDocument={(data) => onSelectItem({...data, type: 'bible'})} />
+        <BibleModule 
+           libraryHandle={libraryHandle} 
+           systemTrigger={systemTrigger} 
+           onSelectDocument={(data) => onSelectItem({...data, type: 'bible'})} 
+           youVersionApiKey={youVersionApiKey}
+        />
         
         <div className="flex-1 overflow-y-auto custom-scrollbar mt-2 border-t border-neutral-800/50 pt-3">
           <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3 px-1">Saved Offline Verses</div>

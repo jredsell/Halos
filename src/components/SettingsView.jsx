@@ -2,7 +2,7 @@ import { Share2, Copy, Check, Building2, Music } from 'lucide-react';
 import { useState } from 'react';
 import { getSongHistory, exportHistoryCSV } from '../services/historyService';
 
-export default function SettingsView({ roomId, churchName, setChurchName, onChangeLibrary }) {
+export default function SettingsView({ roomId, churchName, setChurchName, onChangeLibrary, youVersionApiKey, setYouVersionApiKey }) {
   const [ccliFromDate, setCcliFromDate] = useState(() => {
      const d = new Date();
      d.setDate(d.getDate() - 30);
@@ -36,6 +36,13 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
     try {
       const { set } = await import('idb-keyval');
       await set('halos_church_name', churchName);
+    } catch(e) {}
+  };
+
+  const handleApiKeyBlur = async () => {
+    try {
+      const { set } = await import('idb-keyval');
+      await set('halos_youversion_api_key', youVersionApiKey);
     } catch(e) {}
   };
 
@@ -76,6 +83,24 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
             />
             <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
                This name will be displayed gracefully on the network waiting screens and the main projector output when no media is playing.
+            </p>
+        </div>
+        
+        <div className="flex flex-col gap-2 mt-2">
+            <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest flex justify-between">
+                YouVersion API Key
+                <a href="https://platform.youversion.com/" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Get Key</a>
+            </label>
+            <input 
+               type="password" 
+               value={youVersionApiKey || ""} 
+               onChange={(e) => setYouVersionApiKey(e.target.value)}
+               onBlur={handleApiKeyBlur}
+               placeholder="Enter API Key"
+               className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
+            />
+            <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
+               Required for fetching Bible translations and verses from the YouVersion API.
             </p>
         </div>
       </div>

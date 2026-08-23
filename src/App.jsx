@@ -138,6 +138,7 @@ function App() {
   const [livePayload, setLivePayload] = useState(null);
   const [playbackStatus, setPlaybackStatus] = useState({ time: 0, duration: 0, paused: true });
   const [churchName, setChurchName] = useState("HALOS");
+  const [youVersionApiKey, setYouVersionApiKey] = useState("");
 
   // System Hooks
   const [systemTrigger, refreshLibrary] = useFileSystemWatcher(libraryHandle);
@@ -172,6 +173,9 @@ function App() {
         // 1. Initial Load from DB (Fast, no permissions)
         const savedChurch = await get('halos_church_name');
         if (savedChurch) setChurchName(savedChurch);
+
+        const savedApiKey = await get('halos_youversion_api_key');
+        if (savedApiKey) setYouVersionApiKey(savedApiKey);
 
         const savedService = await get('halos_service_items');
         if (savedService && Array.isArray(savedService)) {
@@ -542,8 +546,9 @@ function App() {
       if (!isLoaded || isInitialLoad.current) return;
       import('idb-keyval').then(({ set }) => {
          set('halos_church_name', churchName);
+         set('halos_youversion_api_key', youVersionApiKey);
       });
-  }, [churchName, isLoaded]);
+  }, [churchName, youVersionApiKey, isLoaded]);
 
   // Slideshow Autoplay Engine
   useEffect(() => {
@@ -1026,7 +1031,9 @@ function App() {
                  onLoadService={handleLoadService}
                  onClearService={handleClearService}
                  onChangeLibrary={handleChangeLibraryPath}
-                  playbackStatus={playbackStatus}
+                 youVersionApiKey={youVersionApiKey}
+                 setYouVersionApiKey={setYouVersionApiKey}
+                 playbackStatus={playbackStatus}
                  roomId={roomId}
                  liveItemId={liveItem?.id}
                  playedItems={playedItems}
