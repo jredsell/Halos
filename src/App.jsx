@@ -552,7 +552,7 @@ function App() {
 
   // Slideshow Autoplay Engine
   useEffect(() => {
-     if (presentationPaused || liveItem?.type !== 'slide_deck' || !liveItem?.images?.length) return;
+     if (presentationPaused || (liveItem?.type !== 'slide_deck' && liveItem?.type !== 'image') || !liveItem?.images?.length) return;
      
      const intervalTime = slideshowInterval * 1000;
      const timer = setInterval(() => {

@@ -260,7 +260,7 @@ export default function LiveControl({
         </div>
 
         {/* 2. Playback Controls */}
-        {(livePayload?.mediaType === 'video' || livePayload?.mediaType === 'audio' || livePayload?.mediaType === 'slide_deck') && (
+        {(livePayload?.mediaType === 'video' || livePayload?.mediaType === 'audio' || livePayload?.mediaType === 'slide_deck' || livePayload?.mediaType === 'image') && (
            <div className="mt-3 bg-neutral-900/80 border border-neutral-800 rounded-xl p-3 space-y-2.5 shadow-xl">
               <div className="flex items-center justify-between gap-3">
                  {/* Play / Pause button */}
