@@ -1,45 +1,96 @@
-export default function ImageArrayViewer({ images, currentIndex, onSelectIndex }) {
+import { CheckCircle, Circle, Plus, Minus } from 'lucide-react';
+
+export default function ImageArrayViewer({ images, currentIndex, onSelectIndex, item, isServiceItem, onAddSelectedToService, onRemoveSelectedFromService }) {
   if (!images || images.length === 0) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 border border-neutral-800 rounded-2xl">
-        <span className="text-neutral-500 font-bold uppercase tracking-widest text-sm">No Document Selected</span>
+        <span className="text-neutral-500 font-bold uppercase tracking-widest text-sm">No Images Found</span>
       </div>
     );
   }
 
-  const currentImg = images[currentIndex] || images[0];
+  const title = item?.title || 'Slide Deck';
 
   return (
-    <div className="w-full h-full flex flex-col relative focus:outline-none">
-       <div className="flex-1 overflow-hidden rounded-2xl bg-black border border-neutral-800 relative shadow-[0_0_50px_rgba(0,0,0,0.5)] flex items-center justify-center group">
-         <img 
-           src={currentImg.url} 
-           className="w-full h-full object-contain pointer-events-none transition-transform duration-500 ease-out" 
-           alt={`Slide ${currentIndex + 1}`} 
-         />
-         <div className="absolute bottom-4 right-4 bg-black/80 backdrop-blur-xl px-4 py-1.5 rounded-full text-xs font-bold text-neutral-300 tracking-widest border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
-           {currentIndex + 1} / {images.length}
-         </div>
-       </div>
+    <div className="flex flex-col h-full animate-in fade-in duration-300">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6 border-b border-neutral-800/50 pb-4">
+        <div className="flex flex-col">
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">{title}</h2>
+          <div className="text-sm font-bold text-neutral-400 mt-2 uppercase tracking-widest leading-none">
+            {images.length} Image{images.length !== 1 ? 's' : ''}
+          </div>
+        </div>
 
-       {/* Thumbnail strip */}
-       <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-2 pt-1 px-1 snap-x">
-         {images.map((img, i) => (
-           <div 
-             key={i} 
-             onClick={() => onSelectIndex(i)}
-             className={`w-32 aspect-video snap-start flex-shrink-0 rounded-xl overflow-hidden border-[3px] transition-all cursor-pointer ${
-               i === currentIndex 
-                 ? 'border-blue-500 opacity-100 shadow-[0_0_15px_rgba(37,99,235,0.4)] scale-105 transform -translate-y-1' 
-                 : 'border-transparent opacity-40 hover:opacity-100 hover:border-neutral-700'
-             }`}
-           >
-             <img src={img.url} className="w-full h-full object-cover" alt={`Thumb ${i+1}`} />
-             <div className="absolute inset-0 bg-black/20"></div>
-             <div className="absolute bottom-1 right-1 text-[9px] font-black text-white bg-black/60 px-1 rounded">{i+1}</div>
-           </div>
-         ))}
-       </div>
+        <div className="flex items-center gap-3">
+            {isServiceItem ? (
+              <button
+                onClick={onRemoveSelectedFromService}
+                className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-red-900/20 active:scale-95"
+              >
+                <Minus size={16} strokeWidth={3} />
+                Remove From Service
+              </button>
+            ) : (
+              <button
+                onClick={onAddSelectedToService}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95"
+              >
+                <Plus size={16} strokeWidth={3} />
+                Add To Service
+              </button>
+            )}
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 pt-2 px-1">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-12">
+          {images.map((img, i) => {
+            const isActiveCard = i === currentIndex;
+            return (
+              <div key={i} className="flex flex-col gap-2 group">
+                {/* Card */}
+                <div
+                  onClick={() => onSelectIndex && onSelectIndex(i)}
+                  className={`aspect-video rounded-3xl flex flex-col relative cursor-pointer border-2 transition-all duration-300 overflow-hidden ${
+                    isActiveCard
+                        ? 'bg-blue-900/10 border-blue-500 shadow-[0_0_40px_rgba(59,130,246,0.3)] scale-[1.02] transform z-10'
+                        : 'bg-neutral-900/40 border-neutral-800 hover:border-neutral-700 hover:scale-[1.01] transform'
+                  }`}
+                >
+                  <img src={img.url} className="w-full h-full object-contain bg-black" alt={`Slide ${i+1}`} />
+
+                  {/* Selection Indicator */}
+                  <div 
+                    className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      isActiveCard 
+                        ? 'bg-blue-600 text-white scale-110 shadow-lg' 
+                        : 'bg-black/40 text-white/40 hover:bg-black/60 hover:text-white opacity-0 group-hover:opacity-100'
+                    }`}
+                  >
+                    {isActiveCard ? <CheckCircle size={20} /> : <Circle size={20} />}
+                  </div>
+                </div>
+
+                {/* Label Row */}
+                <div className="flex justify-between items-center px-4">
+                  <div className={`text-[10px] font-black uppercase tracking-[0.3em] transition-colors ${
+                    isActiveCard ? 'text-blue-400' : 'text-neutral-400'
+                  }`}>
+                    › IMAGE
+                  </div>
+                  <div className={`text-[10px] font-black ${
+                    isActiveCard ? 'text-blue-500/80' : 'text-neutral-700'
+                  }`}>
+                    SLIDE {i + 1}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

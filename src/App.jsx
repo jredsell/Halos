@@ -1095,7 +1095,17 @@ function App() {
                    }} 
                  />
                ) : selectedItem?.type === 'slide_deck' || selectedItem?.type === 'image' ? (
-                  <ImageArrayViewer images={selectedItem.images} currentIndex={activeSlideIndex} onSelectIndex={handleSetSlideIndex} />
+                  <ImageArrayViewer 
+                    images={selectedItem.images} 
+                    currentIndex={activeSlideIndex} 
+                    onSelectIndex={handleSetSlideIndex}
+                    item={selectedItem}
+                    isServiceItem={serviceItems.some(si => si.id === selectedItem?.id)}
+                    onAddSelectedToService={handleAddToService}
+                    onRemoveSelectedFromService={() => {
+                        handleDeleteItem(selectedItem.id);
+                    }}
+                  />
                ) : selectedItem?.type === 'video' ? (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-black rounded-2xl border border-neutral-800 p-8 shadow-inner overflow-hidden relative">
                      <div className="absolute top-4 left-4 z-10 text-xs font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-3">
