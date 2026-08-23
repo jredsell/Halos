@@ -115,30 +115,37 @@ function processYouVersionPassage(passageData, bibleId) {
   // Clean up excessive whitespace
   extractedText = extractedText.replace(/\s+/g, ' ').trim();
 
+  const slides = parseBibleText(extractedText, passageData.reference, 4); // Default to 4 on initial fetch
+
+  return {
+    reference: passageData.reference, // Human readable reference
+    translation: passageData.version_abbreviation || bibleId, // e.g., "NIV"
+    rawText: extractedText,
+    slides
+  };
+}
+
+export function parseBibleText(rawText, reference, linesPerSlide = 4) {
   const slides = [];
   let slideIndex = 1;
 
   // Split into manageable chunks (by sentences)
-  const rawLines = extractedText
+  const rawLines = rawText
     .replace(/([.?!;")])\s+(?=[A-Z"'])/g, "$1\n")
     .split('\n')
     .map(l => l.trim())
     .filter(l => l !== '');
   
-  const chunks = balanceLines(rawLines);
+  const chunks = balanceLines(rawLines, linesPerSlide);
   chunks.forEach(chunk => {
     slides.push({
-      type: passageData.reference, // e.g., "John 3:16"
+      type: reference, // e.g., "John 3:16"
       content: chunk,
       index: slideIndex++
     });
   });
 
-  return {
-    reference: passageData.reference, // Human readable reference
-    translation: passageData.version_abbreviation || bibleId, // e.g., "NIV"
-    slides
-  };
+  return slides;
 }
 
 /**
@@ -242,29 +249,19 @@ function parseReference(ref) {
 }
 
 export function processBibleJson(data) {
-  const slides = [];
-  let slideIndex = 1;
+  let combinedRawText = "";
 
   for (const v of data.verses) {
-    const rawLines = v.text
-      .replace(/([.?!;")])\s+(?=[A-Z"'])/g, "$1\n")
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l !== '');
-    
-    const chunks = balanceLines(rawLines);
-    chunks.forEach(chunk => {
-      slides.push({
-        type: `Verse ${v.verse}`,
-        content: chunk,
-        index: slideIndex++
-      });
-    });
+     combinedRawText += `[${v.verse}] ${v.text} `;
   }
+  
+  combinedRawText = combinedRawText.replace(/\s+/g, ' ').trim();
+  const slides = parseBibleText(combinedRawText, data.reference, 4); // Default to 4
 
   return {
     reference: data.reference,
     translation: data.translation_id || 'KJV',
+    rawText: combinedRawText,
     slides
   };
 }

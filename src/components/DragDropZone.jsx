@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { UploadCloud } from 'lucide-react';
 
-export default function DragDropZone({ libraryHandle, children }) {
+export default function DragDropZone({ libraryHandle, onFileAdded, children }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
 
@@ -101,13 +101,17 @@ export default function DragDropZone({ libraryHandle, children }) {
                await writable.write(file);
                await writable.close();
                console.log(`Smart Ingest: Copied ${file.name} to /${targetFolder}`);
+               if (onFileAdded) onFileAdded();
              } catch (err) {
                console.error(`Failed to ingest ${file.name}`, err);
              }
          }
       }
     }
-  }, [libraryHandle]);
+    
+    // Also trigger onFileAdded for folders
+    if (onFileAdded) onFileAdded();
+  }, [libraryHandle, onFileAdded]);
 
   useEffect(() => {
     window.addEventListener('dragenter', handleDragEnter);

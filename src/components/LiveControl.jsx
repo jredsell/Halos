@@ -196,10 +196,22 @@ export default function LiveControl({
      notifyAppOfStatus(status);
   }, [notifyAppOfStatus]);
 
-  // Reset localStatus when item changes
-  useEffect(() => {
-     setLocalStatus({ time: 0, duration: 0, paused: !livePayload?.itemAutoPlay });
-  }, [livePayload?.activeMediaUrl]);
+    const isLiveRef = useRef(isLive);
+    useEffect(() => {
+       isLiveRef.current = isLive;
+    }, [isLive]);
+
+    // Reset localStatus when item changes
+    useEffect(() => {
+       setLocalStatus({ time: 0, duration: 0, paused: isLiveRef.current ? !livePayload?.itemAutoPlay : true });
+    }, [livePayload?.activeMediaUrl]);
+
+    // Force sync when App.jsx pauses the presentation (e.g. window closed)
+    useEffect(() => {
+       if (presentationPaused) {
+           setLocalStatus(prev => ({ ...prev, paused: true }));
+       }
+    }, [presentationPaused]);
 
   const handlePickLogo = async (e) => {
     e.stopPropagation();

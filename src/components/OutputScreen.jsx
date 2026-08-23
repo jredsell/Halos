@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { getYoutubeEmbedUrl } from '../utils/media';
 
-// High-Impact Smart Scaler
-function AutoFitLyrics({ lines, isMaster = false, isLiveBroadcast = false, isClearText = false, mediaType = 'song' }) {
+function AutoFitLyrics({ lines, subText, isMaster = false, isLiveBroadcast = false, isClearText = false, mediaType = 'song' }) {
   const containerRef = useRef(null);
   const textRef = useRef(null);
   const [fontSize, setFontSize] = useState(20);
@@ -36,10 +35,15 @@ function AutoFitLyrics({ lines, isMaster = false, isLiveBroadcast = false, isCle
     return () => ro.disconnect();
   }, [lines, isHighImpact, mediaType]);
   return (
-    <div ref={containerRef} className={`absolute inset-0 flex items-center justify-center overflow-hidden transition-opacity duration-300 ${paddingClass} ${opacityClass}`}>
+    <div ref={containerRef} className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden transition-opacity duration-300 ${paddingClass} ${opacityClass}`}>
       <div ref={textRef} className="font-black text-white text-center leading-[1.3] drop-shadow-[0_4px_48px_rgba(0,0,0,1)] antialiased w-full text-balance whitespace-pre-wrap" style={{ fontSize: fontSize + 'px', wordBreak: 'break-word' }}>
         {lines.map((line, i) => <div key={i}>{line}</div>)}
       </div>
+      {subText && (
+         <div className="absolute bottom-[6%] right-[6%] font-semibold text-white/80 drop-shadow-md text-right whitespace-nowrap" style={{ fontSize: Math.max(14, fontSize * 0.4) + 'px' }}>
+            {subText}
+         </div>
+      )}
     </div>
   );
 }
@@ -681,7 +685,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
               )}
 
               {(payload.mediaType === 'song' || payload.mediaType === 'bible') && payload.activeSlide && payload.activeSlide.length > 0 && (
-                 <AutoFitLyrics lines={payload.activeSlide} isMaster={isMaster} isLiveBroadcast={isLiveBroadcast} isClearText={payload.isClearText} mediaType={payload.mediaType} />
+                 <AutoFitLyrics lines={payload.activeSlide} subText={payload.slideSubText} isMaster={isMaster} isLiveBroadcast={isLiveBroadcast} isClearText={payload.isClearText} mediaType={payload.mediaType} />
               )}
               {payload.mediaType === 'liturgy' && payload.activeSlide && payload.activeSlide.length > 0 && (
                  <AutoFitLiturgy

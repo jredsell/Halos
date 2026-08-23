@@ -14,8 +14,9 @@ import LiturgyEditor from './components/LiturgyEditor'
 import { useFileSystemWatcher } from './hooks/useFileSystemWatcher'
 import { useSearchIndexer } from './hooks/useSearchIndexer'
 import { useFolderContents } from './hooks/useFolderContents'
-import { parseSongMarkdown } from './utils/songParser'
-import { parseLiturgyMarkdown } from './utils/liturgyParser'
+import { parseSongMarkdown } from './utils/songParser';
+import { parseLiturgyMarkdown } from './utils/liturgyParser';
+import { parseBibleText } from './services/bibleService';
 import ConfirmModal from './components/ConfirmModal'
 import { verifyPermission, reResolveMedia, formatVerseRanges, getYoutubeEmbedUrl } from './utils/media'
 import OutputScreen from './components/OutputScreen'
@@ -62,25 +63,29 @@ function FolderExplorer({ folderName, handle, onSelectItem, onBack }) {
                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-1.2-1.8A2 2 0 0 0 7.55 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
                 {folderName}
              </div>
-             <div className="w-full max-w-2xl h-full pt-4 flex flex-col">
-                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
-                     {isLoading && <div className="text-neutral-500 italic p-4 text-center text-sm animate-pulse">Scanning folder...</div>}
-                     {!isLoading && files.map(f => (
-                         <div 
-                             key={f.name}
-                             onClick={() => onSelectItem(f)}
-                             className="p-3 bg-neutral-900 border border-neutral-800 rounded-xl hover:bg-neutral-800 hover:border-blue-500/50 cursor-pointer flex items-center gap-3 transition-colors text-sm text-neutral-300 shadow"
-                         >
-                             {f.isDirectory 
-                                 ? <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400 flex-shrink-0"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-1.2-1.8A2 2 0 0 0 7.55 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
-                                 : <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500 flex-shrink-0"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                             }
-                             <span className="truncate">{f.name}</span>
-                         </div>
-                     ))}
-                     {!isLoading && files.length === 0 && <div className="text-neutral-500 italic p-4 text-center text-sm">Empty Folder</div>}
-                 </div>
-             </div>
+               <div className="w-full h-full pt-12 flex flex-col">
+                   <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                       {isLoading && <div className="text-neutral-500 italic p-4 text-center text-sm animate-pulse">Scanning folder...</div>}
+                       
+                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                           {!isLoading && files.map(f => (
+                               <div 
+                                   key={f.name}
+                                   onClick={() => onSelectItem(f)}
+                                   className="group aspect-square p-4 bg-neutral-900/50 border border-neutral-800/80 rounded-2xl hover:bg-neutral-800 hover:border-blue-500/50 cursor-pointer flex flex-col items-center justify-center gap-3 transition-all text-sm text-neutral-300 shadow hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] hover:-translate-y-1"
+                               >
+                                   {f.isDirectory 
+                                       ? <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400/80 group-hover:text-blue-400 transition-colors flex-shrink-0"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-1.2-1.8A2 2 0 0 0 7.55 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                                       : <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500/70 group-hover:text-neutral-300 transition-colors flex-shrink-0"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                   }
+                                   <span className="truncate w-full text-center text-[11px] font-medium leading-tight px-1">{f.name}</span>
+                               </div>
+                           ))}
+                       </div>
+                       
+                       {!isLoading && files.length === 0 && <div className="text-neutral-500 italic p-4 text-center text-sm col-span-full">Empty Folder</div>}
+                   </div>
+               </div>
         </div>
     );
 }
@@ -274,20 +279,25 @@ function App() {
     };
   }, [roomId, isProjectorView, isNetworkView]);
 
-  // Live Re-sharding: Automatically re-shard songs when the linesPerSlide setting changes
-  useEffect(() => {
-    if (!isLoaded) return;
-    
-    // Only re-shard if it's a song or liturgy and has rawText source
-    const reShard = (item) => {
-       if ((item?.type === 'song' || item?.type === 'liturgy') && item.rawText) {
-          const parsed = item.type === 'song'
-            ? parseSongMarkdown(item.rawText, linesPerSlide)
-            : parseLiturgyMarkdown(item.rawText, linesPerSlide);
-          return { ...item, slides: parsed.slides };
-       }
-       return item;
-    };
+    // Live Re-sharding: Automatically re-shard songs and bibles when the linesPerSlide setting changes
+    useEffect(() => {
+      if (!isLoaded) return;
+      
+      // Only re-shard if it's a song, liturgy, or bible and has rawText source
+      const reShard = (item) => {
+         if ((item?.type === 'song' || item?.type === 'liturgy' || item?.type === 'bible') && item.rawText) {
+            let parsedSlides;
+            if (item.type === 'song') {
+                parsedSlides = parseSongMarkdown(item.rawText, linesPerSlide).slides;
+            } else if (item.type === 'liturgy') {
+                parsedSlides = parseLiturgyMarkdown(item.rawText, linesPerSlide).slides;
+            } else if (item.type === 'bible') {
+                parsedSlides = parseBibleText(item.rawText, item.reference || item.title, linesPerSlide);
+            }
+            return { ...item, slides: parsedSlides };
+         }
+         return item;
+      };
 
     if (selectedItem) setSelectedItem(prev => reShard(prev));
     if (liveItem) setLiveItem(prev => reShard(prev));
@@ -399,6 +409,9 @@ function App() {
           const slides = liveItem.slides || [];
           if (slides[liveSlideIndex]) {
              payload.activeSlide = slides[liveSlideIndex].content;
+             if (liveItem.type === 'bible') {
+                 payload.slideSubText = slides[liveSlideIndex].type; // This holds the passage reference
+             }
           }
         } else if (liveItem.type === 'liturgy') {
            const slides = liveItem.slides || [];
@@ -574,6 +587,9 @@ function App() {
         if (projectorWindowRef.current && projectorWindowRef.current.closed) {
            setIsLive(false);
            setPresentationPaused(true);
+           const bc = new BroadcastChannel('halos-projector-hub');
+           bc.postMessage({ type: 'control', command: 'pause' });
+           bc.close();
         }
      }, 1000);
      return () => clearInterval(interval);
@@ -699,12 +715,14 @@ function App() {
          if (resolved && resolved[0]) itemToView = resolved[0];
       }
   
-       // Always re-parse songs and liturgy so linesPerSlide is respected
-       if ((item.type === 'song' || item.type === 'liturgy') && item.rawText) {
-          const parsed = item.type === 'song' 
-            ? parseSongMarkdown(item.rawText, linesPerSlide)
-            : parseLiturgyMarkdown(item.rawText, linesPerSlide);
-          itemToView = { ...item, slides: parsed.slides };
+       // Always re-parse songs, liturgy and bible so linesPerSlide is respected
+       if ((item.type === 'song' || item.type === 'liturgy' || item.type === 'bible') && item.rawText) {
+          let parsedSlides;
+          if (item.type === 'song') parsedSlides = parseSongMarkdown(item.rawText, linesPerSlide).slides;
+          else if (item.type === 'liturgy') parsedSlides = parseLiturgyMarkdown(item.rawText, linesPerSlide).slides;
+          else if (item.type === 'bible') parsedSlides = parseBibleText(item.rawText, item.reference || item.title, linesPerSlide);
+          
+          itemToView = { ...item, slides: parsedSlides };
        }
       // Decoupled Seleciton: Only update Live Output if selecting from the Service tab
       if (activeTab === 'Service' || forceLive) {
@@ -937,6 +955,9 @@ function App() {
      if (projectorWindowRef.current) projectorWindowRef.current.close();
      setIsLive(false);
      setPresentationPaused(true);
+     const bc = new BroadcastChannel('halos-projector-hub');
+     bc.postMessage({ type: 'control', command: 'pause' });
+     bc.close();
      setShowOfflineConfirm(false);
   };
 
@@ -973,7 +994,7 @@ function App() {
   }
 
   return (
-    <DragDropZone libraryHandle={libraryHandle}>
+    <DragDropZone libraryHandle={libraryHandle} onFileAdded={() => setFileSystemTrigger(prev => prev + 1)}>
       <div className="h-screen bg-neutral-950 text-white flex flex-col overflow-hidden font-sans selection:bg-blue-500/30">
           
           {/* TOP NAVIGATION BAR */}
@@ -1235,9 +1256,15 @@ function App() {
                     onChangeLinesPerSlide={(n) => {
                       setLinesPerSlide(n);
                       if (selectedItem?.rawText) {
-                        const parsed = parseSongMarkdown(selectedItem.rawText, n);
-                        setSelectedItem(prev => ({ ...prev, slides: parsed.slides }));
-                        setActiveSlideIndex(0);
+                        let parsedSlides;
+                        if (selectedItem.type === 'song') parsedSlides = parseSongMarkdown(selectedItem.rawText, n).slides;
+                        else if (selectedItem.type === 'liturgy') parsedSlides = parseLiturgyMarkdown(selectedItem.rawText, n).slides;
+                        else if (selectedItem.type === 'bible') parsedSlides = parseBibleText(selectedItem.rawText, selectedItem.reference || selectedItem.title, n);
+                        
+                        if (parsedSlides) {
+                          setSelectedItem(prev => ({ ...prev, slides: parsedSlides }));
+                          setActiveSlideIndex(0);
+                        }
                       }
                     }}
                  />

@@ -93,8 +93,8 @@ export default function PreviewEditor({
             )
           )}
 
-          {/* Lines per slide toggle — only for songs and liturgy */}
-          {(isSong || item.type === 'liturgy') && onChangeLinesPerSlide && (
+          {/* Lines per slide toggle */}
+          {(isSong || item.type === 'liturgy' || item.type === 'bible') && onChangeLinesPerSlide && (
             <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden p-1">
               <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400 px-2">Lines</span>
               {[1, 2, 3, 4].map(n => (
@@ -136,7 +136,7 @@ export default function PreviewEditor({
                 {/* Card */}
                 <div
                   onClick={() => onSelectIndex && onSelectIndex(i)}
-                  className={`aspect-video rounded-3xl flex flex-col relative cursor-pointer border-2 transition-all duration-300 overflow-hidden ${
+                  className={`@container aspect-video rounded-3xl flex flex-col relative cursor-pointer border-2 transition-all duration-300 overflow-hidden ${
                     isActiveCard
                       ? isResponse
                         ? 'bg-amber-950/20 border-amber-500 shadow-[0_0_40px_rgba(245,158,11,0.3)] scale-[1.02] transform z-10'
@@ -154,8 +154,9 @@ export default function PreviewEditor({
                         slide.alignment === 'left' ? 'text-left' : slide.alignment === 'right' ? 'text-right' : 'text-center'
                       } leading-tight tracking-tight drop-shadow-2xl w-full pr-1`}
                       style={{
-                        fontSize: '18px',
+                        fontSize: 'min(10cqh, 5cqw)',
                         whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
                         color: isResponse ? '#fcd34d' : '#ffffff',
                       }}
                     >

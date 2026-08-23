@@ -52,24 +52,24 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200">
-      <div className="bg-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-5xl max-h-full flex flex-col shadow-2xl relative overflow-hidden">
-        
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800/60 bg-neutral-900/50">
-          <h2 className="text-sm font-extrabold uppercase tracking-widest text-white flex items-center gap-2">
-            <Settings size={16} className="text-blue-400" /> System Settings
-          </h2>
-          <button 
-            onClick={onClose}
-            className="p-2 bg-neutral-800/50 hover:bg-neutral-700/80 rounded-xl text-neutral-400 hover:text-white transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 bg-neutral-950 flex flex-col animate-in fade-in duration-200">
+      
+      {/* Header */}
+      <div className="flex items-center justify-between px-8 py-6 border-b border-neutral-800/60 bg-neutral-900/50 flex-shrink-0">
+        <h2 className="text-lg font-extrabold uppercase tracking-widest text-white flex items-center gap-3">
+          <Settings size={20} className="text-blue-400" /> System Settings
+        </h2>
+        <button 
+          onClick={onClose}
+          className="p-3 bg-neutral-800 hover:bg-neutral-700 rounded-xl text-neutral-300 hover:text-white transition-colors"
+        >
+          <X size={20} />
+        </button>
+      </div>
 
-        {/* Modal Content Grid */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           {/* Organization Profile & API */}
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex flex-col gap-4 shadow-xl">
