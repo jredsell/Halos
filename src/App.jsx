@@ -1268,12 +1268,6 @@ function App() {
             </div>
           </main>
           
-          <CentralAudioPlayer 
-             activeItem={selectedItem} 
-             stickyAudioItem={stickyAudioItem}
-             onStickyAudioEnded={() => setStickyAudioItem(null)}
-          />
-
           {isSettingsOpen && (
             <SettingsView
               roomId={roomId}
