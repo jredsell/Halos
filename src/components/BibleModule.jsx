@@ -78,7 +78,7 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
   const [reference, setReference] = useState('');
   const [translation, setTranslation] = useState(() => {
     const saved = localStorage.getItem('defaultBible');
-    return (saved && saved !== '1') ? saved : '12';
+    return (saved && saved !== '1') ? saved : '111';
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -105,7 +105,7 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
         .then(bibles => {
           setOnlineTranslations(bibles);
           if (bibles.length > 0 && !localTranslations.includes(translation)) {
-            const defaultBible = bibles.find(b => b.id === 12 || b.id === '12') || bibles[0];
+            const defaultBible = bibles.find(b => b.id === 111 || b.id === '111') || bibles[0];
             setTranslation(defaultBible.id.toString());
           }
         })
