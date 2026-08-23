@@ -79,7 +79,7 @@ export async function fetchYouVersionPassage(apiKey, bibleId, passageReference) 
   }
   const data = await res.json();
   
-  return processYouVersionPassage(data.data, bibleId);
+  return processYouVersionPassage(data, bibleId);
 }
 
 /**
