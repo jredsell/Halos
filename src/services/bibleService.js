@@ -90,9 +90,13 @@ function processYouVersionPassage(passageData, bibleId) {
   // By default, it returns HTML. We need to parse the HTML to extract verse numbers and text,
   // OR we can just rely on the plain text if they provide it. But the default /passages often returns HTML string in `content`.
   
+  if (!passageData) {
+    throw new Error("YouVersion API returned an empty or invalid passage response.");
+  }
+
   // Let's create a temporary DOM element to parse the HTML and extract text gracefully.
   const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = passageData.content;
+  tempDiv.innerHTML = passageData.content || "";
   
   // Extract text, ignoring headers, chapter numbers, etc. if possible.
   // The YouVersion API usually wraps verses in <span class="v {verse_number}">...</span>

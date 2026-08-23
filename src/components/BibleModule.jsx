@@ -283,7 +283,7 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
         className="w-full bg-neutral-900 border border-neutral-800 rounded-xl text-sm font-bold text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition shadow-inner appearance-none cursor-pointer"
       >
         {onlineTranslations.length > 0 ? (
-          <optgroup label="Online (YouVersion)">
+          <optgroup label="YouVersion">
             {onlineTranslations.map(lt => (
               <option key={lt.id} value={lt.id.toString()}>
                 {lt.abbreviation} - {lt.title}
@@ -291,10 +291,12 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
             ))}
           </optgroup>
         ) : (
-          <optgroup label="Online Bibles">
-            <option value="1" disabled>
-              {onlineError ? "Invalid API Key (Check Settings)" : "YouVersion API Key Required"}
-            </option>
+          <optgroup label="YouVersion (Popular)">
+            <option value="111">NIV - New International Version</option>
+            <option value="1">KJV - King James Version</option>
+            <option value="12">ASV - American Standard Version</option>
+            <option value="59">ESV - English Standard Version</option>
+            <option value="116">NLT - New Living Translation</option>
           </optgroup>
         )}
         
