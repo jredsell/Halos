@@ -1,3 +1,5 @@
+import { convertPdfToImages } from './pdfConverter';
+
 export async function verifyPermission(fileHandle, readWrite = true) {
   const options = { mode: readWrite ? 'readwrite' : 'read' }
   if ((await fileHandle.queryPermission(options)) === 'granted') return true
@@ -14,20 +16,31 @@ export async function reResolveMedia(items, library) {
     
     try {
       if (item.type === 'slide_deck') {
-         let subDir = item.handle || item.fileHandle;
-         if (!subDir) {
-             const dirHandle = await library.getDirectoryHandle(item.folder);
-             subDir = await dirHandle.getDirectoryHandle(item.filename);
+         if (item.filename?.toLowerCase().endsWith('.pdf') || item.extension === 'pdf') {
+             let fileHandle = item.fileHandle || item.handle;
+             if (!fileHandle) {
+                 const dirHandle = await library.getDirectoryHandle(item.folder);
+                 fileHandle = await dirHandle.getFileHandle(item.filename);
+             }
+             const file = await fileHandle.getFile();
+             const images = await convertPdfToImages(file);
+             newItems[i] = { ...item, fileHandle, images, url: URL.createObjectURL(file) };
+         } else {
+             let subDir = item.handle || item.fileHandle;
+             if (!subDir) {
+                 const dirHandle = await library.getDirectoryHandle(item.folder);
+                 subDir = await dirHandle.getDirectoryHandle(item.filename);
+             }
+             const imgArray = [];
+             for await (const entry of subDir.values()) {
+                if (entry.kind === 'file' && entry.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                   const file = await entry.getFile();
+                   imgArray.push({ name: entry.name, url: URL.createObjectURL(file) });
+                }
+             }
+             imgArray.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+             newItems[i] = { ...item, images: imgArray.map(img => ({ url: img.url })) };
          }
-         const imgArray = [];
-         for await (const entry of subDir.values()) {
-            if (entry.kind === 'file' && entry.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-               const file = await entry.getFile();
-               imgArray.push({ name: entry.name, url: URL.createObjectURL(file) });
-            }
-         }
-         imgArray.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-         newItems[i] = { ...item, images: imgArray.map(img => ({ url: img.url })) };
       } else if (item.folder !== 'Bible' && !item.isExternal) {
          let fileHandle = item.fileHandle || item.handle;
          if (!fileHandle) {
