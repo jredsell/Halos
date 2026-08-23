@@ -72,7 +72,11 @@ export async function fetchYouVersionPassage(apiKey, bibleId, passageReference) 
     }
   });
 
-  if (!res.ok) throw new Error("Passage not found or unauthorized");
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    console.error(`YouVersion API Error: ${res.status} ${res.statusText} on ${res.url}. Response:`, errorText);
+    throw new Error(`Passage not found or unauthorized (${res.status})`);
+  }
   const data = await res.json();
   
   return processYouVersionPassage(data.data, bibleId);

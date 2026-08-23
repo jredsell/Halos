@@ -76,7 +76,10 @@ const BIBLE_BOOKS = [
 
 export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocument, youVersionApiKey }) {
   const [reference, setReference] = useState('');
-  const [translation, setTranslation] = useState('1'); // Default to KJV YouVersion ID (1)
+  const [translation, setTranslation] = useState(() => {
+    const saved = localStorage.getItem('defaultBible');
+    return (saved && saved !== '1') ? saved : '12';
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [localTranslations, setLocalTranslations] = useState([]);
@@ -102,7 +105,7 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
         .then(bibles => {
           setOnlineTranslations(bibles);
           if (bibles.length > 0 && !localTranslations.includes(translation)) {
-            const defaultBible = bibles.find(b => b.id === 1) || bibles[0];
+            const defaultBible = bibles.find(b => b.id === 12 || b.id === '12') || bibles[0];
             setTranslation(defaultBible.id.toString());
           }
         })

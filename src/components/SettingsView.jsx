@@ -133,7 +133,7 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
               <div className="bg-white p-2 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.1)] flex-shrink-0">
                 <img src={qrUrl} alt="QR Code" className="w-24 h-24" />
               </div>
-              <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-2 w-full min-w-0">
                   <div className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Live Broadcast URL</div>
                   <div className="flex items-center gap-2 bg-neutral-950 px-3 py-2 rounded-lg border border-neutral-800 group cursor-pointer hover:border-blue-500/50 transition-colors w-full overflow-hidden" onClick={handleCopy}>
                       <code className="text-[11px] text-blue-400 font-bold truncate flex-1 text-left">{liveUrl}</code>
@@ -157,7 +157,7 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
               <div className="bg-white p-2 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.1)] flex-shrink-0">
                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(base + '?remoteControl=' + roomId)}`} alt="Remote Control QR Code" className="w-24 h-24" />
               </div>
-              <div className="flex flex-col gap-2 w-full">
+              <div className="flex flex-col gap-2 w-full min-w-0">
                   <div className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Remote Control URL</div>
                   <div className="flex items-center gap-2 bg-neutral-950 px-3 py-2 rounded-lg border border-neutral-800 group cursor-pointer hover:border-blue-500/50 transition-colors w-full overflow-hidden" onClick={() => {
                       navigator.clipboard.writeText(base + '?remoteControl=' + roomId);
