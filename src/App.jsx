@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Peer } from 'peerjs'
-import { ExternalLink, Check } from 'lucide-react'
+import { ExternalLink, Check, Settings } from 'lucide-react'
 import FileSystemSetup from './components/FileSystemSetup'
 import { getStoredDirectoryHandle } from './utils/fileSystem'
 import Sidebar from './components/Sidebar'
+import SettingsView from './components/SettingsView'
 import PreviewEditor from './components/PreviewEditor'
 import LiveControl from './components/LiveControl'
 import DragDropZone from './components/DragDropZone'
@@ -22,7 +23,7 @@ import CentralAudioPlayer from './components/CentralAudioPlayer'
 import RemoteControl from './components/RemoteControl'
 import { addSongPlay } from './services/historyService'
 
-const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Music', 'Settings'];
+const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Music'];
 
 function FolderExplorer({ folderName, handle, onSelectItem, onBack }) {
     const [files, setFiles] = useState([]);
@@ -110,6 +111,7 @@ function App() {
   const [remoteControlRoom, setRemoteControlRoom] = useState(null);
   const [roomId, setRoomId] = useState(null);
   const [networkPayload, setNetworkPayload] = useState(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // App Global Data State
   const [activeTab, setActiveTab] = useState('Service');
@@ -136,7 +138,7 @@ function App() {
   const [isClearText, setIsClearText] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
   const [livePayload, setLivePayload] = useState(null);
-  const [playbackStatus, setPlaybackStatus] = useState({ time: 0, duration: 0, paused: true });
+  const [playbackStatus, setPlaybackStatus] = useState({ time: 0, duration: 0, paused: undefined });
   const [churchName, setChurchName] = useState("HALOS");
   const [youVersionApiKey, setYouVersionApiKey] = useState("");
 
@@ -571,6 +573,7 @@ function App() {
      const interval = setInterval(() => {
         if (projectorWindowRef.current && projectorWindowRef.current.closed) {
            setIsLive(false);
+           setPresentationPaused(true);
         }
      }, 1000);
      return () => clearInterval(interval);
@@ -933,6 +936,7 @@ function App() {
   const executeGoOffline = () => {
      if (projectorWindowRef.current) projectorWindowRef.current.close();
      setIsLive(false);
+     setPresentationPaused(true);
      setShowOfflineConfirm(false);
   };
 
@@ -1004,6 +1008,13 @@ function App() {
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
                   Connected
                 </div>
+                <button 
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors"
+                  title="System Settings"
+                >
+                  <Settings size={18} />
+                </button>
               </div>
             </div>
           </header>
@@ -1257,6 +1268,28 @@ function App() {
             </div>
           </main>
           
+          <CentralAudioPlayer 
+             activeItem={selectedItem} 
+             stickyAudioItem={stickyAudioItem}
+             onStickyAudioEnded={() => setStickyAudioItem(null)}
+          />
+
+          {isSettingsOpen && (
+            <SettingsView
+              roomId={roomId}
+              churchName={churchName}
+              setChurchName={setChurchName}
+              onChangeLibrary={() => {
+                  if (confirm('Are you sure you want to change the library folder? This will reload the app.')) {
+                      import('idb-keyval').then(({ del }) => del('halos_library_handle').then(() => window.location.reload()));
+                  }
+              }}
+              youVersionApiKey={youVersionApiKey}
+              setYouVersionApiKey={setYouVersionApiKey}
+              onClose={() => setIsSettingsOpen(false)}
+            />
+          )}
+
          <ConfirmModal 
              isOpen={showClearConfirm}
              title="Clear Service Flow?"
