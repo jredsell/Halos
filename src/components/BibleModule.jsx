@@ -81,6 +81,7 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
   const [error, setError] = useState(null);
   const [localTranslations, setLocalTranslations] = useState([]);
   const [onlineTranslations, setOnlineTranslations] = useState([]);
+  const [onlineError, setOnlineError] = useState(false);
 
   // Autocomplete state
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -95,20 +96,24 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
 
   // Fetch online translations if API key is provided
   useEffect(() => {
-    if (youVersionApiKey) {
-      fetchBibleVersions(youVersionApiKey)
+    if (youVersionApiKey && youVersionApiKey.trim()) {
+      setOnlineError(false);
+      fetchBibleVersions(youVersionApiKey.trim())
         .then(bibles => {
           setOnlineTranslations(bibles);
-          // Auto-select a default if the current selection is a local one but we just loaded online ones
           if (bibles.length > 0 && !localTranslations.includes(translation)) {
-            // Find KJV (1) or just use the first
             const defaultBible = bibles.find(b => b.id === 1) || bibles[0];
             setTranslation(defaultBible.id.toString());
           }
         })
-        .catch(err => console.error("Failed to fetch YouVersion bibles:", err));
+        .catch(err => {
+          console.error("Failed to fetch YouVersion bibles:", err);
+          setOnlineError(true);
+          setOnlineTranslations([]);
+        });
     } else {
       setOnlineTranslations([]);
+      setOnlineError(false);
     }
   }, [youVersionApiKey]);
 
@@ -196,12 +201,12 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
       if (isLocal) {
          data = await fetchLocalBiblePassage(libraryHandle, translation, ref);
       } else {
-         if (!youVersionApiKey) {
+         if (!youVersionApiKey || !youVersionApiKey.trim()) {
            throw new Error("YouVersion API key is missing. Add it in Settings or select a local offline Bible.");
          }
          const yvRef = parseReferenceToYouVersion(ref);
          if (!yvRef) throw new Error("Invalid reference format or unknown book.");
-         data = await fetchYouVersionPassage(youVersionApiKey, translation, yvRef);
+         data = await fetchYouVersionPassage(youVersionApiKey.trim(), translation, yvRef);
          // Ensure the human readable reference matches what the user typed/intended
          data.reference = ref;
       }
@@ -284,7 +289,9 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
           </optgroup>
         ) : (
           <optgroup label="Online Bibles">
-            <option value="1" disabled>YouVersion API Key Required</option>
+            <option value="1" disabled>
+              {onlineError ? "Invalid API Key (Check Settings)" : "YouVersion API Key Required"}
+            </option>
           </optgroup>
         )}
         

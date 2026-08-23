@@ -39,11 +39,16 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
     } catch(e) {}
   };
 
-  const handleApiKeyBlur = async () => {
+  const [savingKey, setSavingKey] = useState(false);
+  const handleSaveApiKey = async () => {
+    setSavingKey(true);
     try {
       const { set } = await import('idb-keyval');
       await set('halos_youversion_api_key', youVersionApiKey);
-    } catch(e) {}
+      setTimeout(() => setSavingKey(false), 1000);
+    } catch(e) {
+      setSavingKey(false);
+    }
   };
 
   return (
@@ -91,14 +96,26 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
                 YouVersion API Key
                 <a href="https://platform.youversion.com/" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Get Key</a>
             </label>
-            <input 
-               type="password" 
-               value={youVersionApiKey || ""} 
-               onChange={(e) => setYouVersionApiKey(e.target.value)}
-               onBlur={handleApiKeyBlur}
-               placeholder="Enter API Key"
-               className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
-            />
+            <div className="flex gap-2">
+                <input 
+                   type="password" 
+                   value={youVersionApiKey || ""} 
+                   onChange={(e) => setYouVersionApiKey(e.target.value)}
+                   onKeyDown={(e) => { if (e.key === 'Enter') handleSaveApiKey(); }}
+                   placeholder="Enter API Key"
+                   className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
+                />
+                <button 
+                   onClick={handleSaveApiKey}
+                   className={`px-5 font-bold uppercase tracking-wider text-[10px] rounded-lg transition-all border ${
+                      savingKey 
+                        ? 'bg-green-600/20 text-green-400 border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.2)]'
+                        : 'bg-blue-600/20 text-blue-400 border-blue-500/30 hover:bg-blue-600/40'
+                   }`}
+                >
+                   {savingKey ? 'Saved!' : 'Save'}
+                </button>
+            </div>
             <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
                Required for fetching Bible translations and verses from the YouVersion API.
             </p>
