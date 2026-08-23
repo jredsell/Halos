@@ -4,7 +4,6 @@ import BibleModule from './BibleModule';
 import ServiceFlow from './ServiceFlow';
 import { processBibleJson } from '../services/bibleService';
 import ConfirmModal from './ConfirmModal';
-import SettingsView from './SettingsView';
 import { parseLiturgyMarkdown } from '../utils/liturgyParser';
 import { parseSongMarkdown } from '../utils/songParser';
 import { convertPdfToImages } from '../utils/pdfConverter';
@@ -348,17 +347,6 @@ export default function Sidebar({
     setFileToDelete(file);
   };
 
-  // 0. Settings View
-  if (activeTab === 'Settings') {
-    return <SettingsView 
-      roomId={roomId} 
-      churchName={churchName} 
-      setChurchName={setChurchName} 
-      onChangeLibrary={onChangeLibrary} 
-      youVersionApiKey={youVersionApiKey}
-      setYouVersionApiKey={setYouVersionApiKey}
-    />;
-  }
 
   // 0b. Liturgy View
   if (activeTab === 'Liturgy') {

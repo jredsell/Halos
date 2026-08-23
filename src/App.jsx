@@ -1010,7 +1010,7 @@ function App() {
 
           <main className="flex-1 flex overflow-hidden relative">
             
-            <div className="w-[340px] border-r border-neutral-800/50 p-5 bg-neutral-900/30 flex flex-col gap-6 flex-shrink-0 z-10 shadow-lg relative">
+            <div className="w-[380px] border-r border-neutral-800/50 p-5 bg-neutral-900/30 flex flex-col gap-6 flex-shrink-0 z-10 shadow-lg relative">
               <Sidebar 
                  activeTab={activeTab}
                  libraryHandle={libraryHandle}
