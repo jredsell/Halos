@@ -8,7 +8,7 @@ const YOUVERSION_BASE_URL = 'https://api.youversion.com/v1';
 export async function fetchBibleVersions(apiKey) {
   if (!apiKey) throw new Error("Missing YouVersion API Key");
   
-  const res = await fetch(`${YOUVERSION_BASE_URL}/bibles`, {
+  const res = await fetch(`${YOUVERSION_BASE_URL}/bibles?language_ranges[]=eng`, {
     headers: {
       'X-YVP-App-Key': apiKey,
       'Accept': 'application/json'
