@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Bold, Italic, Underline, List, ListOrdered, 
   Type, Save, Plus, Trash2, FileText, ChevronRight,
-  MessageSquare, MessageCircle, Eye, Edit3, User,
+  MessageSquare, MessageCircle, Eye, Edit3, User, Users,
   AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import { parseLiturgyMarkdown, buildLiturgyMarkdown } from '../utils/liturgyParser';
@@ -24,6 +24,9 @@ function ToolbarBtn({ onClick, title, children, active, variant = 'default' }) {
     candidate: active
       ? 'bg-green-500/30 text-green-300 shadow-inner border border-green-500/40'
       : 'text-green-500/60 hover:text-green-300 hover:bg-green-500/10 border border-green-500/10',
+    group: active
+      ? 'bg-blue-500/30 text-blue-300 shadow-inner border border-blue-500/40'
+      : 'text-blue-500/60 hover:text-blue-300 hover:bg-blue-500/10 border border-blue-500/10',
   };
   return (
     <button
@@ -41,6 +44,7 @@ function ToolbarBtn({ onClick, title, children, active, variant = 'default' }) {
 function LiturgyPreviewSlide({ slide, isActive, onClick }) {
   const isResponse = slide.type === 'response';
   const isCandidate = slide.type === 'candidate';
+  const isGroup = slide.type === 'group';
   const textAlign = slide.alignment === 'left' ? 'text-left' : slide.alignment === 'right' ? 'text-right' : 'text-center';
   const itemsAlign = slide.alignment === 'left' ? 'items-start' : slide.alignment === 'right' ? 'items-end' : 'items-center';
 
@@ -51,20 +55,22 @@ function LiturgyPreviewSlide({ slide, isActive, onClick }) {
         isActive
           ? isCandidate
             ? 'bg-green-950/40 border-green-500/50 shadow-[inset_0_0_12px_rgba(74,222,128,0.1)]'
+            : isGroup
+            ? 'bg-blue-950/40 border-blue-500/50 shadow-[inset_0_0_12px_rgba(59,130,246,0.1)]'
             : isResponse
             ? 'bg-amber-950/40 border-amber-500/50 shadow-[inset_0_0_12px_rgba(245,158,11,0.1)]'
             : 'bg-neutral-700/70 border-neutral-500/50'
           : 'bg-neutral-900/60 border-neutral-800/60 hover:border-neutral-700'
       }`}
     >
-      <div className={`text-[9px] font-black uppercase tracking-widest mb-1.5 w-full ${textAlign} ${isCandidate ? 'text-green-400' : isResponse ? 'text-amber-400' : 'text-neutral-400'}`}>
-        {isCandidate ? '• Individual' : isResponse ? '↩ Response' : '› Speaker'}
+      <div className={`text-[9px] font-black uppercase tracking-widest mb-1.5 w-full ${textAlign} ${isCandidate ? 'text-green-400' : isGroup ? 'text-blue-400' : isResponse ? 'text-amber-400' : 'text-neutral-400'}`}>
+        {isCandidate ? '• Individual' : isGroup ? '👥 Group' : isResponse ? '↩ Response' : '› Speaker'}
         {slide.alignment !== 'center' && <span className="ml-2 opacity-50">({slide.alignment})</span>}
       </div>
       {slide.content.map((line, i) => (
         <div
           key={i}
-          className={`text-xs font-medium leading-relaxed truncate w-full ${textAlign} ${isCandidate ? 'text-green-200/80' : isResponse ? 'text-amber-200/80' : 'text-neutral-300'}`}
+          className={`text-xs font-medium leading-relaxed truncate w-full ${textAlign} ${isCandidate ? 'text-green-200/80' : isGroup ? 'text-blue-200/80' : isResponse ? 'text-amber-200/80' : 'text-neutral-300'}`}
         >
           {line}
         </div>
@@ -284,6 +290,14 @@ export default function LiturgyEditor({
             >
               <User size={14} />
               <span>Individual</span>
+            </ToolbarBtn>
+            <ToolbarBtn
+              onClick={() => insertLineTag('[/group]')}
+              title="Group Response Block"
+              variant="group"
+            >
+              <Users size={14} />
+              <span>Group</span>
             </ToolbarBtn>
           </div>
 

@@ -20,6 +20,7 @@ import { verifyPermission, reResolveMedia, formatVerseRanges, getYoutubeEmbedUrl
 import OutputScreen from './components/OutputScreen'
 import CentralAudioPlayer from './components/CentralAudioPlayer'
 import RemoteControl from './components/RemoteControl'
+import { addSongPlay } from './services/historyService'
 
 const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Music', 'Settings'];
 
@@ -701,6 +702,11 @@ function App() {
       if (activeTab === 'Service' || forceLive) {
          setRemoteCommand(null);
          setLiveItem(itemToView);
+         
+         if (itemToView.type === 'song') {
+             addSongPlay(itemToView);
+         }
+         
        setLiveSlideIndex(0);
        setPlayedItems(prev => new Set(prev).add(itemToView.id));
        

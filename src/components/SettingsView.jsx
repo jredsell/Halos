@@ -1,7 +1,26 @@
-import { Share2, Copy, Check, Building2 } from 'lucide-react';
+import { Share2, Copy, Check, Building2, Music } from 'lucide-react';
 import { useState } from 'react';
+import { getSongHistory, exportHistoryCSV } from '../services/historyService';
 
 export default function SettingsView({ roomId, churchName, setChurchName, onChangeLibrary }) {
+  const [ccliFromDate, setCcliFromDate] = useState(() => {
+     const d = new Date();
+     d.setDate(d.getDate() - 30);
+     return d.toISOString().split('T')[0];
+  });
+  const [ccliToDate, setCcliToDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const handleExportCCLI = async () => {
+     const from = new Date(ccliFromDate);
+     const to = new Date(ccliToDate);
+     const records = await getSongHistory(from, to);
+     if (records.length === 0) {
+         alert("No songs played in this date range.");
+         return;
+     }
+     exportHistoryCSV(records);
+  };
+
   const [copied, setCopied] = useState(false);
   const base = window.location.origin + window.location.pathname;
   const liveUrl = `${base}${base.endsWith('/') ? '' : '/'}?network=true${roomId ? `&room=${roomId}` : ''}`;
@@ -78,6 +97,34 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
             </div>
             <p className="text-[10px] text-neutral-500 mt-2 leading-relaxed">
                Scan this code with a phone or tablet to control the live presentation remotely.
+            </p>
+        </div>
+      </div>
+
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 flex flex-col gap-4 shadow-xl mt-4">
+        <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+           <Music size={14} className="text-blue-400" /> Song History (CCLI Reporting)
+        </div>
+        <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Date Range</label>
+            <div className="flex gap-4 items-center">
+               <div className="flex-1 flex flex-col gap-1">
+                   <span className="text-[9px] text-neutral-500 uppercase font-bold">From</span>
+                   <input type="date" value={ccliFromDate} onChange={e => setCcliFromDate(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium" />
+               </div>
+               <div className="flex-1 flex flex-col gap-1">
+                   <span className="text-[9px] text-neutral-500 uppercase font-bold">To</span>
+                   <input type="date" value={ccliToDate} onChange={e => setCcliToDate(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium" />
+               </div>
+            </div>
+            <button 
+               onClick={handleExportCCLI}
+               className="mt-2 w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-sm"
+            >
+               Export to CSV
+            </button>
+            <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
+               Export a list of songs played between these dates to report to CCLI.
             </p>
         </div>
       </div>

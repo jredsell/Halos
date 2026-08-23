@@ -7,6 +7,7 @@ import ConfirmModal from './ConfirmModal';
 import SettingsView from './SettingsView';
 import { parseLiturgyMarkdown } from '../utils/liturgyParser';
 import { parseSongMarkdown } from '../utils/songParser';
+import { convertPdfToImages } from '../utils/pdfConverter';
 
 export default function Sidebar({ 
   activeTab, 
@@ -234,7 +235,17 @@ export default function Sidebar({
     } else if (['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac'].includes(ext)) {
        previewItem.isAudio = true;
        previewItem.type = 'audio';
-    } else if (['ppt', 'pptx', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'key', 'pages', 'numbers'].includes(ext)) {
+    } else if (ext === 'pdf') {
+       try {
+           const images = await convertPdfToImages(file);
+           previewItem.images = images;
+           previewItem.type = 'slide_deck';
+       } catch (e) {
+           console.error("Failed to parse PDF", e);
+           previewItem.isDocument = true;
+           previewItem.type = 'document';
+       }
+    } else if (['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx', 'key', 'pages', 'numbers'].includes(ext)) {
        previewItem.isDocument = true;
        previewItem.type = 'document';
     } else if (['md', 'txt', 'halos'].includes(ext)) {

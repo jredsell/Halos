@@ -54,6 +54,7 @@ function AutoFitLiturgy({ lines, liturgyType = 'speaker', alignment = 'center', 
   const opacityClass = isClearText ? "opacity-0" : "opacity-100";
   const isResponse = liturgyType === 'response';
   const isCandidate = liturgyType === 'candidate';
+  const isGroup = liturgyType === 'group';
   
   const textAlign = alignment === 'left' ? 'text-left' : alignment === 'right' ? 'text-right' : 'text-center';
   const flexAlign = alignment === 'left' ? 'items-start' : alignment === 'right' ? 'items-end' : 'items-center';
@@ -79,9 +80,11 @@ function AutoFitLiturgy({ lines, liturgyType = 'speaker', alignment = 'center', 
         style={{
           fontSize: fontSize + 'px',
           wordBreak: 'break-word',
-          color: isCandidate ? '#4ade80' : isResponse ? '#fcd34d' : '#ffffff',
+          color: isCandidate ? '#4ade80' : isGroup ? '#60a5fa' : isResponse ? '#fcd34d' : '#ffffff',
           textShadow: isCandidate
             ? '0 0 60px rgba(74,222,128,0.4), 0 4px 48px rgba(0,0,0,1)'
+            : isGroup
+            ? '0 0 60px rgba(96,165,250,0.4), 0 4px 48px rgba(0,0,0,1)'
             : isResponse
             ? '0 0 60px rgba(251,191,36,0.4), 0 4px 48px rgba(0,0,0,1)'
             : '0 4px 48px rgba(0,0,0,1)',
