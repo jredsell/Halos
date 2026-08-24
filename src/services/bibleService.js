@@ -65,7 +65,7 @@ export async function fetchBibleChapters(apiKey, bibleId, bookId) {
 export async function fetchYouVersionPassage(apiKey, bibleId, passageReference) {
   if (!apiKey) throw new Error("Missing YouVersion API Key");
 
-  const res = await fetch(`${YOUVERSION_BASE_URL}/bibles/${bibleId}/passages/${passageReference}`, {
+  const res = await fetch(`${YOUVERSION_BASE_URL}/bibles/${bibleId}/passages/${passageReference}?response_type=html&format=html`, {
     headers: {
       'X-YVP-App-Key': apiKey,
       'Accept': 'application/json'
@@ -98,6 +98,16 @@ function processYouVersionPassage(passageData, bibleId) {
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = passageData.content || "";
   
+  // Inject our standard [1] verse markers into the YouVersion label elements
+  // This ensures that even if verses aren't wrapped in containers, the raw text will have markers.
+  const labels = tempDiv.querySelectorAll('.label, .yv-vlbl');
+  labels.forEach(lbl => {
+      const vNum = lbl.textContent.trim();
+      if (vNum) {
+          lbl.textContent = `[${vNum}] `;
+      }
+  });
+  
   // Extract text, ignoring headers, chapter numbers, etc. if possible.
   // The YouVersion API usually wraps verses in <span class="v {verse_number}">...</span>
   // or <span class="verse" data-usfm="...">
@@ -113,10 +123,11 @@ function processYouVersionPassage(passageData, bibleId) {
        if (!vNum && label) {
          vNum = label.textContent.trim();
        }
-       
-       if (vNum) {
-          if (label) label.remove();
-          return `[${vNum}] ${v.textContent.trim()}`;
+       // Since we've already injected [vNum] into the label, we can just use textContent if vNum is valid,
+       // but wait, we modified the label in the DOM, so v.textContent will ALREADY include the injected [1].
+       // We just need to prepend the USFM parsed verse number if there was NO label.
+       if (vNum && !v.querySelector('.label') && !v.querySelector('.yv-vlbl')) {
+           return `[${vNum}] ${v.textContent.trim()}`;
        }
        return v.textContent.trim();
      }).join(' ');

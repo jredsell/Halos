@@ -40,7 +40,7 @@ function AutoFitLyrics({ lines, subText, isMaster = false, isLiveBroadcast = fal
         {lines.map((line, i) => <div key={i}>{line}</div>)}
       </div>
       {subText && mediaType === 'bible' && (
-        <div className="absolute bottom-[6%] w-full text-center font-bold text-white/50 tracking-widest uppercase drop-shadow-lg" style={{ fontSize: Math.max(14, fontSize * 0.35) + 'px' }}>
+        <div className="absolute bottom-[6%] w-full text-center font-semibold text-white/60 tracking-[0.2em] uppercase drop-shadow-2xl" style={{ fontSize: Math.max(16, fontSize * 0.35) + 'px' }}>
           {subText}
         </div>
       )}

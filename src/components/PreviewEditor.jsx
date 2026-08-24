@@ -173,7 +173,7 @@ export default function PreviewEditor({
                       ))}
                     </div>
                     {item.type === 'bible' && slide.type && (
-                      <div className="absolute bottom-[6%] w-full text-center font-bold text-white/50 tracking-widest uppercase drop-shadow-lg" style={{ fontSize: `min(${sizeCqh * 0.4}cqh, ${sizeCqw * 0.4}cqw)` }}>
+                      <div className="absolute bottom-[6%] w-full text-center font-semibold text-white/60 tracking-[0.2em] uppercase drop-shadow-2xl" style={{ fontSize: `min(${sizeCqh * 0.4}cqh, ${sizeCqw * 0.4}cqw)` }}>
                         {slide.type}
                       </div>
                     )}
