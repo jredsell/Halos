@@ -1,5 +1,5 @@
 export async function handler(event, context) {
-  const apiKey = process.env.YOUVERSION_API_KEY;
+  const apiKey = (process.env.YOUVERSION_API_KEY || '').trim();
   
   if (!apiKey) {
     return {

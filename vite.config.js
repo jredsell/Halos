@@ -1,16 +1,74 @@
-import { defineConfig } from 'vite' // Halos V2 Deployment
+import { defineConfig, loadEnv } from 'vite' // Halos V2 Deployment
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+// Simulates the Netlify function during local development
+const netlifyFunctionProxy = (env) => {
+  return {
+    name: 'netlify-function-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const urlObj = new URL(req.url, `http://${req.headers.host}`);
+        
+        if (urlObj.pathname === '/.netlify/functions/youversion') {
+           const apiKey = env.YOUVERSION_API_KEY;
+           if (!apiKey) {
+             res.statusCode = 500;
+             res.end(JSON.stringify({ error: 'YOUVERSION_API_KEY is not configured in your local .env file.' }));
+             return;
+           }
+
+           const endpoint = urlObj.searchParams.get('endpoint');
+           urlObj.searchParams.delete('endpoint');
+           const qs = urlObj.searchParams.toString();
+           
+           if (!endpoint) {
+             res.statusCode = 400;
+             res.end(JSON.stringify({ error: 'Missing endpoint query parameter' }));
+             return;
+           }
+           
+           const targetUrl = `https://api.youversion.com/v1${endpoint}${qs ? '?' + qs : ''}`;
+           
+           try {
+             const result = await fetch(targetUrl, {
+               headers: {
+                 'X-YVP-App-Key': apiKey.trim(),
+                 'Accept': 'application/json'
+               }
+             });
+             const body = await result.text();
+             res.statusCode = result.status;
+             res.setHeader('Content-Type', 'application/json');
+             res.setHeader('Access-Control-Allow-Origin', '*');
+             res.end(body);
+           } catch(e) {
+             res.statusCode = 500;
+             res.setHeader('Access-Control-Allow-Origin', '*');
+             res.end(JSON.stringify({ error: e.message }));
+           }
+           return;
+        }
+
+        next();
+      });
+    }
+  };
+};
+
 // https://vite.dev/config/
-export default defineConfig({
-  base: process.env.NETLIFY ? '/' : '/halos/',
-  server: {
-    host: true, // Expose to local network automatically
-    port: 5178, // Bypassing Redly's cached port
-  },
-  plugins: [
-    tailwindcss(),
-    react(),
-  ],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  return {
+    base: env.NETLIFY ? '/' : '/halos/',
+    server: {
+      host: true, // Expose to local network automatically
+      port: 5178, // Bypassing Redly's cached port
+    },
+    plugins: [
+      netlifyFunctionProxy(env),
+      tailwindcss(),
+      react(),
+    ],
+  };
 })
