@@ -144,12 +144,12 @@ export function parseBibleText(rawText, reference, linesPerSlide = 4) {
   // Split strictly by verse markers so that "Lines Per Slide" 
   // explicitly means "Verses Per Slide".
   // Fallback: If no verse markers exist (e.g. legacy cached items), split by sentences.
-  const hasVerseMarkers = /\[\d+[a-z]?\]/.test(rawText);
+  const hasVerseMarkers = /\[\d+[a-z]?(?:-\d+[a-z]?)?(?:,\d+[a-z]?)?\]/i.test(rawText);
   let rawLines = [];
   
   if (hasVerseMarkers) {
       rawLines = rawText
-        .replace(/(\s*)(?=\[\d+[a-z]?\]\s)/gi, "\n")
+        .replace(/(\s*)(?=\[\d+[a-z]?(?:-\d+[a-z]?)?(?:,\d+[a-z]?)?\])/gi, "\n")
         .split('\n')
         .map(l => l.trim())
         .filter(l => l !== '');
@@ -165,12 +165,12 @@ export function parseBibleText(rawText, reference, linesPerSlide = 4) {
   const chunks = balanceLines(rawLines, linesPerSlide);
   chunks.forEach(chunk => {
     let firstLine = chunk[0];
-    const verseMatch = firstLine.match(/^\[?(\d+[a-z]?)\]?\s/i);
+    const verseMatch = firstLine.match(/^\[?(\d+[a-z]?(?:-\d+[a-z]?)?(?:,\d+[a-z]?)?)\]?/i);
     
     if (verseMatch) {
        currentVerseMatch = `[${verseMatch[1]}]`;
        // Normalize the verse number in the string to have brackets for consistency
-       chunk[0] = firstLine.replace(/^\[?(\d+[a-z]?)\]?\s/i, `[${verseMatch[1]}] `);
+       chunk[0] = firstLine.replace(/^\[?(\d+[a-z]?(?:-\d+[a-z]?)?(?:,\d+[a-z]?)?)\]?\s*/i, `[${verseMatch[1]}] `);
     } else if (currentVerseMatch) {
        chunk[0] = `${currentVerseMatch} ${firstLine}`;
     }
