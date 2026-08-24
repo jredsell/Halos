@@ -142,8 +142,10 @@ export function parseBibleText(rawText, reference, linesPerSlide = 4) {
   let slideIndex = 1;
 
   // Split into manageable chunks (by sentences)
-  // Ensure we also split when the next word starts with a number (like a verse number)
+  // Ensure we also split when the next word starts with a number (like a verse number),
+  // and specifically split BEFORE every verse marker like [1], [2a]
   const rawLines = rawText
+    .replace(/(\s*)(?=\[\d+[a-z]?\]\s)/gi, "\n")
     .replace(/([.?!;”"’'])\s+(?=[A-Z0-9\[“‘"'])/g, "$1\n")
     .split('\n')
     .map(l => l.trim())
