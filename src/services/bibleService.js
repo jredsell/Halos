@@ -100,8 +100,8 @@ function processYouVersionPassage(passageData, bibleId) {
   
   // Extract text, ignoring headers, chapter numbers, etc. if possible.
   // The YouVersion API usually wraps verses in <span class="v {verse_number}">...</span>
-  // or similar.
-  const verses = tempDiv.querySelectorAll('.v');
+  // or <span class="verse" data-usfm="...">
+  const verses = tempDiv.querySelectorAll('.v, .verse, [data-usfm]');
   let extractedText = "";
 
   if (verses.length > 0) {
@@ -141,12 +141,10 @@ export function parseBibleText(rawText, reference, linesPerSlide = 4) {
   const slides = [];
   let slideIndex = 1;
 
-  // Split into manageable chunks (by sentences)
-  // Ensure we also split when the next word starts with a number (like a verse number),
-  // and specifically split BEFORE every verse marker like [1], [2a]
+  // Split strictly by verse markers so that "Lines Per Slide" 
+  // explicitly means "Verses Per Slide".
   const rawLines = rawText
     .replace(/(\s*)(?=\[\d+[a-z]?\]\s)/gi, "\n")
-    .replace(/([.?!;”"’'])\s+(?=[A-Z0-9\[“‘"'])/g, "$1\n")
     .split('\n')
     .map(l => l.trim())
     .filter(l => l !== '');
