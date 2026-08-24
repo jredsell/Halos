@@ -187,13 +187,22 @@ export default function LiveControl({
   // time/play/pause event. We update localStatus immediately for snappy controls.
   const handleStatusUpdate = useCallback((status) => {
      if (!status) return;
-     setLocalStatus(prev => ({
-        time:     status.time     !== undefined ? status.time     : prev.time,
-        duration: status.duration !== undefined ? status.duration : prev.duration,
-        paused:   status.paused   !== undefined ? status.paused   : prev.paused,
-     }));
-     // Broadcast so App updates playbackStatus (which feeds the projector popup & network)
-     notifyAppOfStatus(status);
+     setLocalStatus(prev => {
+        const next = {
+           time:     status.time     !== undefined ? status.time     : prev.time,
+           duration: status.duration !== undefined ? status.duration : prev.duration,
+           paused:   status.paused   !== undefined ? status.paused   : prev.paused,
+        };
+        
+        // Only notify App (which triggers global re-renders and network broadcasts) if 
+        // paused state changes, duration changes, or time jumps significantly (> 1.5s).
+        // Continuous time updates are handled by client-side interpolation.
+        if (next.paused !== prev.paused || next.duration !== prev.duration || Math.abs(next.time - prev.time) > 1.5) {
+            notifyAppOfStatus({ time: next.time, paused: next.paused, duration: next.duration });
+        }
+        
+        return next;
+     });
   }, [notifyAppOfStatus]);
 
     const isLiveRef = useRef(isLive);
