@@ -103,7 +103,7 @@ const halosBroadcastPlugin = () => {
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/halos/',
+  base: process.env.NETLIFY ? '/' : '/halos/',
   server: {
     host: true, // Expose to local network automatically
     port: 5178, // Bypassing Redly's cached port
