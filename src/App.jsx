@@ -734,9 +734,12 @@ function App() {
          }
          
        setLiveSlideIndex(0);
-       setPlayedItems(prev => new Set(prev).add(itemToView.id));
        
-       const willAutoPlay = itemToView.autoPlay === true;
+       if (isLive) {
+          setPlayedItems(prev => new Set(prev).add(itemToView.id));
+       }
+       
+       const willAutoPlay = itemToView.autoPlay === true && isLive;
        setPresentationPaused(!willAutoPlay); 
        setPlaybackStatus({ time: 0, duration: 0, paused: !willAutoPlay, ts: Date.now() });
        
@@ -946,6 +949,9 @@ function App() {
         // Break out projection window via standard OS popups
         projectorWindowRef.current = window.open('?projector=true', 'HalosProjector', 'menubar=no,location=no,resizable=yes,scrollbars=no,status=no,width=1280,height=720');
         setIsLive(true);
+        if (liveItem) {
+           setPlayedItems(prev => new Set(prev).add(liveItem.id));
+        }
      } else {
         setShowOfflineConfirm(true);
      }

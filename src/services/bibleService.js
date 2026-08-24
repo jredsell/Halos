@@ -130,14 +130,25 @@ export function parseBibleText(rawText, reference, linesPerSlide = 4) {
   let slideIndex = 1;
 
   // Split into manageable chunks (by sentences)
+  // Ensure we also split when the next word starts with a number (like a verse number)
   const rawLines = rawText
-    .replace(/([.?!;")])\s+(?=[A-Z"'])/g, "$1\n")
+    .replace(/([.?!;")])\s+(?=[A-Z"'0-9])/g, "$1\n")
     .split('\n')
     .map(l => l.trim())
     .filter(l => l !== '');
-  
+  let currentVerseMatch = "";
+
   const chunks = balanceLines(rawLines, linesPerSlide);
   chunks.forEach(chunk => {
+    let firstLine = chunk[0];
+    const verseMatch = firstLine.match(/^(\d+[a-z]?)\s/i);
+    
+    if (verseMatch) {
+       currentVerseMatch = verseMatch[1];
+    } else if (currentVerseMatch) {
+       chunk[0] = `${currentVerseMatch} ${firstLine}`;
+    }
+
     slides.push({
       type: reference, // e.g., "John 3:16"
       content: chunk,

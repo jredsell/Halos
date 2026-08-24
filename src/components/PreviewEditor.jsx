@@ -168,8 +168,15 @@ export default function PreviewEditor({
                         color: isResponse ? '#fcd34d' : '#ffffff',
                       }}
                     >
-                      {(slide.content || []).map((line, li) => <div key={li}>{line}</div>)}
+                      {slide.content?.map((line, li) => (
+                        <div key={li}>{line}</div>
+                      ))}
                     </div>
+                    {item.type === 'bible' && slide.type && (
+                      <div className="absolute bottom-[6%] w-full text-center font-bold text-white/50 tracking-widest uppercase drop-shadow-lg" style={{ fontSize: `min(${sizeCqh * 0.4}cqh, ${sizeCqw * 0.4}cqw)` }}>
+                        {slide.type}
+                      </div>
+                    )}
                   </div>
 
                   {/* Selection Indicator */}

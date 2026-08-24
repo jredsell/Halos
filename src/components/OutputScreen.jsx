@@ -39,10 +39,10 @@ function AutoFitLyrics({ lines, subText, isMaster = false, isLiveBroadcast = fal
       <div ref={textRef} className="font-black text-white text-center leading-[1.3] drop-shadow-[0_4px_48px_rgba(0,0,0,1)] antialiased w-full text-balance whitespace-pre-wrap" style={{ fontSize: fontSize + 'px', wordBreak: 'break-word' }}>
         {lines.map((line, i) => <div key={i}>{line}</div>)}
       </div>
-      {subText && (
-         <div className="absolute bottom-[6%] right-[6%] font-semibold text-white/80 drop-shadow-md text-right whitespace-nowrap" style={{ fontSize: Math.max(14, fontSize * 0.4) + 'px' }}>
-            {subText}
-         </div>
+      {subText && mediaType === 'bible' && (
+        <div className="absolute bottom-[6%] w-full text-center font-bold text-white/50 tracking-widest uppercase drop-shadow-lg" style={{ fontSize: Math.max(14, fontSize * 0.35) + 'px' }}>
+          {subText}
+        </div>
       )}
     </div>
   );
