@@ -199,6 +199,25 @@ export default function LiveControl({
     const isLiveRef = useRef(isLive);
     useEffect(() => {
        isLiveRef.current = isLive;
+       if (!isLive) {
+           setLocalStatus(prev => {
+               const next = { ...prev, paused: true };
+               notifyAppOfStatus({ time: next.time, paused: true, duration: next.duration });
+               return next;
+           });
+           setPresentationPaused(true);
+           broadcastPlayback('pause');
+       } else {
+           if (livePayload?.itemAutoPlay) {
+               setLocalStatus(prev => {
+                   const next = { ...prev, paused: false };
+                   notifyAppOfStatus({ time: next.time, paused: false, duration: next.duration });
+                   return next;
+               });
+               setPresentationPaused(false);
+               broadcastPlayback('play');
+           }
+       }
     }, [isLive]);
 
     // Reset localStatus when item changes

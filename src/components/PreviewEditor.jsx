@@ -131,7 +131,15 @@ export default function PreviewEditor({
           {slides.map((slide, i) => {
             const isResponse = slide.type === 'response';
             const isActiveCard = i === activeIndex;
-            return (
+                      const textLength = (slide.content || []).join(' ').length;
+                      let sizeCqh = 10;
+                      let sizeCqw = 5;
+                      if (textLength > 350) { sizeCqh = 5; sizeCqw = 2.5; }
+                      else if (textLength > 250) { sizeCqh = 6; sizeCqw = 3; }
+                      else if (textLength > 150) { sizeCqh = 7; sizeCqw = 3.5; }
+                      else if (textLength > 80) { sizeCqh = 8; sizeCqw = 4; }
+
+                      return (
               <div key={i} ref={el => tileRefs.current[i] = el} className="flex flex-col gap-2 group">
                 {/* Card */}
                 <div
@@ -154,7 +162,7 @@ export default function PreviewEditor({
                         slide.alignment === 'left' ? 'text-left' : slide.alignment === 'right' ? 'text-right' : 'text-center'
                       } leading-tight tracking-tight drop-shadow-2xl w-full pr-1`}
                       style={{
-                        fontSize: 'min(10cqh, 5cqw)',
+                        fontSize: `min(${sizeCqh}cqh, ${sizeCqw}cqw)`,
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
                         color: isResponse ? '#fcd34d' : '#ffffff',

@@ -150,12 +150,12 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           urlObj.searchParams.set('muted', isMaster && !muteAudio ? '0' : '1');
        }
 
-       // For master (projector/preview): respect the item's autoPlay setting.
+       // For master (projector/preview): respect the item's autoPlay setting, but only if Live is enabled.
        // For followers (network view): autoplay only if the master is actively playing.
        if (!isMaster) {
           urlObj.searchParams.set('autoplay', payload?.isPaused ? '0' : '1');
        } else {
-          urlObj.searchParams.set('autoplay', payload.itemAutoPlay ? '1' : '0');
+          urlObj.searchParams.set('autoplay', (payload.itemAutoPlay && payload.isLive) ? '1' : '0');
        }
 
 
