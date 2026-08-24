@@ -161,7 +161,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
 
 
        return urlObj.toString();
-    }, [payload?.activeMediaUrl, isMaster, payload?.isYouTube, payload?.isVimeo, payload?.itemAutoPlay]);
+    }, [payload?.activeMediaUrl, isMaster, payload?.isYouTube, payload?.isVimeo, payload?.itemAutoPlay, payload?.isLive]);
 
     // Sticky Audio Playback Logic
     useEffect(() => {
@@ -583,7 +583,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                       ref={videoRef}
                       key={payload.activeMediaUrl}
                       src={payload.activeMediaUrl}
-                      autoPlay={isMaster ? payload.itemAutoPlay : !payload?.isPaused}
+                      autoPlay={isMaster ? (payload.itemAutoPlay && payload.isLive) : !payload?.isPaused}
                       muted={isMuted ? true : undefined}
                       loop={payload.itemLoop ?? true}
                       className={`w-full h-full object-cover ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}

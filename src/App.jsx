@@ -1261,17 +1261,24 @@ function App() {
                     }}
                     onChangeLinesPerSlide={(n) => {
                       setLinesPerSlide(n);
-                      if (selectedItem?.rawText) {
-                        let parsedSlides;
-                        if (selectedItem.type === 'song') parsedSlides = parseSongMarkdown(selectedItem.rawText, n).slides;
-                        else if (selectedItem.type === 'liturgy') parsedSlides = parseLiturgyMarkdown(selectedItem.rawText, n).slides;
-                        else if (selectedItem.type === 'bible') parsedSlides = parseBibleText(selectedItem.rawText, selectedItem.reference || selectedItem.title, n);
-                        
-                        if (parsedSlides) {
-                          setSelectedItem(prev => ({ ...prev, slides: parsedSlides }));
-                          setActiveSlideIndex(0);
+                        if (selectedItem?.rawText) {
+                          let parsedSlides;
+                          if (selectedItem.type === 'song') parsedSlides = parseSongMarkdown(selectedItem.rawText, n).slides;
+                          else if (selectedItem.type === 'liturgy') parsedSlides = parseLiturgyMarkdown(selectedItem.rawText, n).slides;
+                          else if (selectedItem.type === 'bible') parsedSlides = parseBibleText(selectedItem.rawText, selectedItem.reference || selectedItem.title, n);
+                          
+                          if (parsedSlides) {
+                            setSelectedItem(prev => ({ ...prev, slides: parsedSlides }));
+                            setActiveSlideIndex(0);
+                            
+                            // Update it in service list too if it's there
+                            setServiceItems(prev => prev.map(si => 
+                              si.id === selectedItem.id 
+                                ? { ...si, slides: parsedSlides }
+                                : si
+                            ));
+                          }
                         }
-                      }
                     }}
                  />
               ) : (

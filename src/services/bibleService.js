@@ -105,10 +105,22 @@ function processYouVersionPassage(passageData, bibleId) {
   let extractedText = "";
 
   if (verses.length > 0) {
-     // If they use standard `.v` classes for verses
-     extractedText = Array.from(verses).map(v => v.textContent).join(' ');
+     extractedText = Array.from(verses).map(v => {
+       const usfm = v.getAttribute('data-usfm') || "";
+       let vNum = usfm.split('.').pop();
+       
+       const label = v.querySelector('.label');
+       if (!vNum && label) {
+         vNum = label.textContent.trim();
+       }
+       
+       if (vNum) {
+          if (label) label.remove();
+          return `[${vNum}] ${v.textContent.trim()}`;
+       }
+       return v.textContent.trim();
+     }).join(' ');
   } else {
-     // Fallback if structure is different
      extractedText = tempDiv.textContent || tempDiv.innerText || "";
   }
   
@@ -132,7 +144,7 @@ export function parseBibleText(rawText, reference, linesPerSlide = 4) {
   // Split into manageable chunks (by sentences)
   // Ensure we also split when the next word starts with a number (like a verse number)
   const rawLines = rawText
-    .replace(/([.?!;")])\s+(?=[A-Z"'0-9])/g, "$1\n")
+    .replace(/([.?!;”"’'])\s+(?=[A-Z0-9\[“‘"'])/g, "$1\n")
     .split('\n')
     .map(l => l.trim())
     .filter(l => l !== '');
@@ -141,10 +153,12 @@ export function parseBibleText(rawText, reference, linesPerSlide = 4) {
   const chunks = balanceLines(rawLines, linesPerSlide);
   chunks.forEach(chunk => {
     let firstLine = chunk[0];
-    const verseMatch = firstLine.match(/^(\d+[a-z]?)\s/i);
+    const verseMatch = firstLine.match(/^\[?(\d+[a-z]?)\]?\s/i);
     
     if (verseMatch) {
-       currentVerseMatch = verseMatch[1];
+       currentVerseMatch = `[${verseMatch[1]}]`;
+       // Normalize the verse number in the string to have brackets for consistency
+       chunk[0] = firstLine.replace(/^\[?(\d+[a-z]?)\]?\s/i, `[${verseMatch[1]}] `);
     } else if (currentVerseMatch) {
        chunk[0] = `${currentVerseMatch} ${firstLine}`;
     }
