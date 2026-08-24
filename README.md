@@ -1,2 +1,2 @@
 # HALOS
-Simple Powerful Church Presentation Software.
+Church Presentation Software.

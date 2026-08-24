@@ -36,9 +36,7 @@ export default function Sidebar({
   setChurchName,
   stickyAudioId,
   onToggleSticky,
-  onChangeLibrary,
-  youVersionApiKey,
-  setYouVersionApiKey
+  onChangeLibrary
 }) {
   const [localQuery, setLocalQuery] = useState('');
   const [showAdded, setShowAdded] = useState(false);
@@ -495,7 +493,6 @@ export default function Sidebar({
            libraryHandle={libraryHandle} 
            systemTrigger={systemTrigger} 
            onSelectDocument={(data) => onSelectItem({...data, type: 'bible'})} 
-           youVersionApiKey={youVersionApiKey}
         />
         
         <div className="flex-1 overflow-y-auto custom-scrollbar mt-2 border-t border-neutral-800/50 pt-3">

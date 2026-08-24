@@ -2,7 +2,7 @@ import { Share2, Copy, Check, Building2, Music, X, Settings } from 'lucide-react
 import { useState } from 'react';
 import { getSongHistory, exportHistoryCSV } from '../services/historyService';
 
-export default function SettingsView({ roomId, churchName, setChurchName, onChangeLibrary, youVersionApiKey, setYouVersionApiKey, onClose }) {
+export default function SettingsView({ roomId, churchName, setChurchName, onChangeLibrary, onClose }) {
   const [ccliFromDate, setCcliFromDate] = useState(() => {
      const d = new Date();
      d.setDate(d.getDate() - 30);
@@ -39,17 +39,7 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
     } catch(e) {}
   };
 
-  const [savingKey, setSavingKey] = useState(false);
-  const handleSaveApiKey = async () => {
-    setSavingKey(true);
-    try {
-      const { set } = await import('idb-keyval');
-      await set('halos_youversion_api_key', youVersionApiKey);
-      setTimeout(() => setSavingKey(false), 1000);
-    } catch(e) {
-      setSavingKey(false);
-    }
-  };
+
 
   return (
     <div className="fixed inset-0 z-50 bg-neutral-950 flex flex-col animate-in fade-in duration-200">
@@ -92,35 +82,7 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
                 </p>
             </div>
             
-            <div className="flex flex-col gap-2 mt-4">
-                <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest flex justify-between">
-                    YouVersion API Key
-                    <a href="https://platform.youversion.com/" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Get Key</a>
-                </label>
-                <div className="flex gap-2">
-                    <input 
-                       type="password" 
-                       value={youVersionApiKey || ""} 
-                       onChange={(e) => setYouVersionApiKey(e.target.value)}
-                       onKeyDown={(e) => { if (e.key === 'Enter') handleSaveApiKey(); }}
-                       placeholder="Enter API Key"
-                       className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
-                    />
-                    <button 
-                       onClick={handleSaveApiKey}
-                       className={`px-5 font-bold uppercase tracking-wider text-[10px] rounded-lg transition-all border ${
-                          savingKey 
-                            ? 'bg-green-600/20 text-green-400 border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.2)]'
-                            : 'bg-blue-600/20 text-blue-400 border-blue-500/30 hover:bg-blue-600/40'
-                       }`}
-                    >
-                       {savingKey ? 'Saved!' : 'Save'}
-                    </button>
-                </div>
-                <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
-                   Required for fetching Bible translations and verses from the YouVersion API.
-                </p>
-            </div>
+
           </div>
 
           {/* Network Setup & Sharing */}

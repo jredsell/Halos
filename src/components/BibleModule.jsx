@@ -74,7 +74,7 @@ const BIBLE_BOOKS = [
   { name: 'Revelation', abbr: 'Rev', usfm: 'REV', chapters: 22, testament: 'NT' },
 ];
 
-export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocument, youVersionApiKey }) {
+export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocument }) {
   const [reference, setReference] = useState('');
   const [translation, setTranslation] = useState(() => {
     const saved = localStorage.getItem('defaultBible');
@@ -97,28 +97,23 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
   const [showBrowser, setShowBrowser] = useState(false);
   const browserRef = useRef(null);
 
-  // Fetch online translations if API key is provided
+  // Fetch online translations from proxy
   useEffect(() => {
-    if (youVersionApiKey && youVersionApiKey.trim()) {
-      setOnlineError(false);
-      fetchBibleVersions(youVersionApiKey.trim())
-        .then(bibles => {
-          setOnlineTranslations(bibles);
-          if (bibles.length > 0 && !localTranslations.includes(translation)) {
-            const defaultBible = bibles.find(b => b.id === 111 || b.id === '111') || bibles[0];
-            setTranslation(defaultBible.id.toString());
-          }
-        })
-        .catch(err => {
-          console.error("Failed to fetch YouVersion bibles:", err);
-          setOnlineError(true);
-          setOnlineTranslations([]);
-        });
-    } else {
-      setOnlineTranslations([]);
-      setOnlineError(false);
-    }
-  }, [youVersionApiKey]);
+    setOnlineError(false);
+    fetchBibleVersions()
+      .then(bibles => {
+        setOnlineTranslations(bibles);
+        if (bibles.length > 0 && !localTranslations.includes(translation)) {
+          const defaultBible = bibles.find(b => b.id === 111 || b.id === '111') || bibles[0];
+          setTranslation(defaultBible.id.toString());
+        }
+      })
+      .catch(err => {
+        console.error("Failed to fetch YouVersion bibles:", err);
+        setOnlineError(true);
+        setOnlineTranslations([]);
+      });
+  }, []);
 
   useEffect(() => {
     const scanLocalBibles = async () => {
@@ -204,12 +199,9 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
       if (isLocal) {
          data = await fetchLocalBiblePassage(libraryHandle, translation, ref);
       } else {
-         if (!youVersionApiKey || !youVersionApiKey.trim()) {
-           throw new Error("YouVersion API key is missing. Add it in Settings or select a local offline Bible.");
-         }
          const yvRef = parseReferenceToYouVersion(ref);
          if (!yvRef) throw new Error("Invalid reference format or unknown book.");
-         data = await fetchYouVersionPassage(youVersionApiKey.trim(), translation, yvRef);
+         data = await fetchYouVersionPassage(translation, yvRef);
          // Ensure the human readable reference matches what the user typed/intended
          data.reference = ref;
       }

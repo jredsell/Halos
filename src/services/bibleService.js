@@ -1,16 +1,13 @@
 import { balanceLines } from '../utils/songParser';
 
-const YOUVERSION_BASE_URL = 'https://api.youversion.com/v1';
+const NETLIFY_YOUVERSION_PROXY = '/.netlify/functions/youversion';
 
 /**
- * Fetches the list of available Bible versions from YouVersion API.
+ * Fetches the list of available Bible versions from YouVersion API via proxy.
  */
-export async function fetchBibleVersions(apiKey) {
-  if (!apiKey) throw new Error("Missing YouVersion API Key");
-  
-  const res = await fetch(`${YOUVERSION_BASE_URL}/bibles?language_ranges[]=eng`, {
+export async function fetchBibleVersions() {
+  const res = await fetch(`${NETLIFY_YOUVERSION_PROXY}?endpoint=/bibles&language_ranges[]=eng`, {
     headers: {
-      'X-YVP-App-Key': apiKey,
       'Accept': 'application/json'
     }
   });
@@ -23,12 +20,9 @@ export async function fetchBibleVersions(apiKey) {
 /**
  * Fetches the list of books for a given Bible version.
  */
-export async function fetchBibleBooks(apiKey, bibleId) {
-  if (!apiKey) throw new Error("Missing YouVersion API Key");
-  
-  const res = await fetch(`${YOUVERSION_BASE_URL}/bibles/${bibleId}/books`, {
+export async function fetchBibleBooks(bibleId) {
+  const res = await fetch(`${NETLIFY_YOUVERSION_PROXY}?endpoint=/bibles/${bibleId}/books`, {
     headers: {
-      'X-YVP-App-Key': apiKey,
       'Accept': 'application/json'
     }
   });
@@ -41,12 +35,9 @@ export async function fetchBibleBooks(apiKey, bibleId) {
 /**
  * Fetches the list of chapters for a given Book in a Bible version.
  */
-export async function fetchBibleChapters(apiKey, bibleId, bookId) {
-  if (!apiKey) throw new Error("Missing YouVersion API Key");
-  
-  const res = await fetch(`${YOUVERSION_BASE_URL}/bibles/${bibleId}/books/${bookId}/chapters`, {
+export async function fetchBibleChapters(bibleId, bookId) {
+  const res = await fetch(`${NETLIFY_YOUVERSION_PROXY}?endpoint=/bibles/${bibleId}/books/${bookId}/chapters`, {
     headers: {
-      'X-YVP-App-Key': apiKey,
       'Accept': 'application/json'
     }
   });
@@ -62,12 +53,9 @@ export async function fetchBibleChapters(apiKey, bibleId, bookId) {
  * 
  * Example passageReference: "JHN.3.16" or "JHN.3"
  */
-export async function fetchYouVersionPassage(apiKey, bibleId, passageReference) {
-  if (!apiKey) throw new Error("Missing YouVersion API Key");
-
-  const res = await fetch(`${YOUVERSION_BASE_URL}/bibles/${bibleId}/passages/${passageReference}?response_type=html&format=html`, {
+export async function fetchYouVersionPassage(bibleId, passageReference) {
+  const res = await fetch(`${NETLIFY_YOUVERSION_PROXY}?endpoint=/bibles/${bibleId}/passages/${passageReference}&response_type=html&format=html`, {
     headers: {
-      'X-YVP-App-Key': apiKey,
       'Accept': 'application/json'
     }
   });
