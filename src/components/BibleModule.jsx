@@ -204,6 +204,11 @@ export default function BibleModule({ libraryHandle, systemTrigger, onSelectDocu
          data = await fetchYouVersionPassage(translation, yvRef);
          // Ensure the human readable reference matches what the user typed/intended
          data.reference = ref;
+         
+         const matchedVersion = onlineTranslations.find(b => b.id.toString() === translation.toString());
+         if (matchedVersion) {
+            data.translation = matchedVersion.abbreviation || matchedVersion.title || data.translation;
+         }
       }
 
       if (onSelectDocument) {

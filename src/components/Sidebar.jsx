@@ -10,6 +10,7 @@ import { convertPdfToImages } from '../utils/pdfConverter';
 
 export default function Sidebar({ 
   activeTab, 
+  setActiveTab,
   libraryHandle, 
   searchState, 
   folderFiles,
@@ -26,6 +27,10 @@ export default function Sidebar({
   onClearService,
   systemTrigger,
   onDeleteItem,
+  isLive,
+  liveItem,
+  selectedItem,
+  selectedIndices,
   liveItemId,
   playbackStatus = { time: 0, duration: 0, paused: true },
   playedItems,
@@ -267,19 +272,26 @@ export default function Sidebar({
   };
 
   // Reusable Add Button matching states
-  const AddButton = () => (
-    <button 
-        onClick={triggerAddFeedback} 
-        className={`w-full py-4 text-white font-extrabold tracking-wide uppercase rounded-xl border transition flex items-center justify-center gap-2 mt-auto shadow-lg flex-shrink-0 ${
-           showAdded 
-             ? 'bg-green-600 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]' 
-             : 'bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 border-neutral-700/50'
-        }`}
-    >
-        {showAdded ? <Check size={18} className="text-white" /> : <Plus size={18} className="text-blue-400" />} 
-        {showAdded ? 'Added!' : 'Add to Service'}
-    </button>
-  );
+  const AddButton = () => {
+    let addText = 'Add to Service';
+    if (activeTab === 'Bible') {
+      addText = (selectedIndices && selectedIndices.size > 0) ? 'Add Verses to Service' : 'Add Chapter to Service';
+    }
+    
+    return (
+      <button 
+          onClick={triggerAddFeedback} 
+          className={`w-full py-4 text-white font-extrabold tracking-wide uppercase rounded-xl border transition flex items-center justify-center gap-2 mt-auto shadow-lg flex-shrink-0 ${
+             showAdded 
+               ? 'bg-green-600 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]' 
+               : 'bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 border-neutral-700/50'
+          }`}
+      >
+          {showAdded ? <Check size={18} className="text-white" /> : <Plus size={18} className="text-blue-400" />} 
+          {showAdded ? 'Added!' : addText}
+      </button>
+    );
+  };
 
   const checkInService = (idOrTitle) => serviceItems.some(i => 
     i.id === idOrTitle || 

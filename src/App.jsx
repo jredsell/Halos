@@ -144,7 +144,7 @@ function App() {
   const [logoUrl, setLogoUrl] = useState(null);
   const [livePayload, setLivePayload] = useState(null);
   const [playbackStatus, setPlaybackStatus] = useState({ time: 0, duration: 0, paused: undefined });
-  const [churchName, setChurchName] = useState("HALOS");
+  const [churchName, setChurchName] = useState("HALOS Church Presentation Software");
 
   // System Hooks
   const [systemTrigger, refreshLibrary] = useFileSystemWatcher(libraryHandle);
@@ -794,6 +794,7 @@ function App() {
         title: (selectedItem.title || selectedItem.reference) + selectionLabel,
         slides: selectedSlides
       };
+      delete itemToAdd.rawText;
       setSelectedIndices(new Set()); // Reset after adding
     }
     setServiceItems([...serviceItems, { ...itemToAdd, id: Date.now().toString() }]);
@@ -1046,8 +1047,12 @@ function App() {
             
             <div className="w-[380px] border-r border-neutral-800/50 p-5 bg-neutral-900/30 flex flex-col gap-6 flex-shrink-0 z-10 shadow-lg relative">
               <Sidebar 
-                 activeTab={activeTab}
+                 activeTab={activeTab} setActiveTab={setActiveTab}
                  libraryHandle={libraryHandle}
+                 isLive={isLive}
+                 liveItem={liveItem}
+                 selectedItem={selectedItem}
+                 selectedIndices={selectedIndices}
                  searchState={searchState}
                  folderFiles={folderFiles}
                  linesPerSlide={linesPerSlide}

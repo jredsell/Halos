@@ -61,14 +61,14 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          {/* Organization Profile & API */}
+          {/* Organisation Profile & API */}
           <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 flex flex-col gap-4 shadow-xl">
             <div className="text-xs font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-               <Building2 size={14} className="text-blue-400" /> Organization Profile
+               <Building2 size={14} className="text-blue-400" /> Organisation Profile
             </div>
             
             <div className="flex flex-col gap-2">
-                <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Church / Organization Name</label>
+                <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Church / Organisation Name</label>
                 <input 
                    type="text" 
                    value={churchName || ""} 

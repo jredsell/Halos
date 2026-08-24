@@ -73,24 +73,14 @@ export default function PreviewEditor({
 
         <div className="flex items-center gap-3">
           {/* Dynamic "Add/Remove Selected" Button */}
-          {selectedIndices.size > 0 && (
-            isServiceItem ? (
-              <button
-                onClick={handleRemoveSelected}
-                className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-red-900/20 active:scale-95"
-              >
-                <Minus size={16} strokeWidth={3} />
-                Remove Selected ({selectedIndices.size})
-              </button>
-            ) : (
-              <button
-                onClick={handleAddSelected}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95"
-              >
-                <Plus size={16} strokeWidth={3} />
-                Add Selected ({selectedIndices.size})
-              </button>
-            )
+          {selectedIndices.size > 0 && isServiceItem && (
+            <button
+              onClick={handleRemoveSelected}
+              className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-red-900/20 active:scale-95"
+            >
+              <Minus size={16} strokeWidth={3} />
+              Remove Selected ({selectedIndices.size})
+            </button>
           )}
 
           {/* Lines per slide toggle */}
