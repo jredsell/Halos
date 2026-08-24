@@ -143,11 +143,23 @@ export function parseBibleText(rawText, reference, linesPerSlide = 4) {
 
   // Split strictly by verse markers so that "Lines Per Slide" 
   // explicitly means "Verses Per Slide".
-  const rawLines = rawText
-    .replace(/(\s*)(?=\[\d+[a-z]?\]\s)/gi, "\n")
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l !== '');
+  // Fallback: If no verse markers exist (e.g. legacy cached items), split by sentences.
+  const hasVerseMarkers = /\[\d+[a-z]?\]/.test(rawText);
+  let rawLines = [];
+  
+  if (hasVerseMarkers) {
+      rawLines = rawText
+        .replace(/(\s*)(?=\[\d+[a-z]?\]\s)/gi, "\n")
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l !== '');
+  } else {
+      rawLines = rawText
+        .replace(/([.?!;”"’'])\s+(?=[A-Z0-9\[“‘"'])/g, "$1\n")
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l !== '');
+  }
   let currentVerseMatch = "";
 
   const chunks = balanceLines(rawLines, linesPerSlide);
