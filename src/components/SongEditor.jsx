@@ -254,10 +254,7 @@ export default function SongEditor({ libraryHandle, onSaved, initialData }) {
     e.target.value = null;
   };
 
-  const handleSearchSongSelect = () => {
-    const query = encodeURIComponent(title || "");
-    window.open(`https://songselect.ccli.com/search/results?searchterm=${query}`, '_blank');
-  };
+
 
   const handleSave = async () => {
     if (!title.trim()) return alert("Song Title is required");
@@ -319,21 +316,12 @@ ${lyrics}
             </label>
 
            <button 
-             onClick={handleSearchSongSelect}
-             className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white border border-neutral-700/50 rounded-xl transition-all shadow-lg text-[10px] font-black uppercase tracking-widest"
-             title="Find song on SongSelect website"
-           >
-             <Search size={14} />
-             Find on SongSelect
-           </button>
-
-           <button 
              onClick={handleMagicImport}
              className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl transition-all shadow-lg text-[10px] font-black uppercase tracking-widest group"
              title="Import from Clipboard"
            >
              <Sparkles size={14} className="group-hover:animate-pulse" />
-             Magic Import
+             Import Song Select
            </button>
          </div>
        </div>
