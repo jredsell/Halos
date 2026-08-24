@@ -182,12 +182,12 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     // 2. Command Helpers
     const sendIframeCommand = (cmd, args = []) => {
        if (!iframeRef.current) return;
-       iframeRef.current.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: cmd, args }), '*');
+       iframeRef.current.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: cmd, args }), 'https://www.youtube.com');
     };
 
     const sendVimeoCommand = (method, value = "") => {
        if (!iframeRef.current?.contentWindow) return;
-       iframeRef.current.contentWindow.postMessage(JSON.stringify({ method, value }), '*');
+       iframeRef.current.contentWindow.postMessage(JSON.stringify({ method, value }), 'https://player.vimeo.com');
     };
 
     // forceUnmute: removes the forced-mute that browsers apply at startup.
@@ -245,6 +245,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        const handleMessage = (event) => {
           try {
              if (payload.isYouTube) {
+                if (event.origin !== "https://www.youtube.com") return;
                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
                 const info = data.info || data.data;
                 if ((data.event === 'infoDelivery' || data.event === 'initialDelivery' || data.event === 'onStateChange') && info) {
@@ -277,9 +278,8 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                       followerDurationRef.current = duration;
                    }
                 }
-             }
-
-             if (payload.isVimeo) {
+             } else if (payload.isVimeo) {
+                if (event.origin !== "https://player.vimeo.com") return;
                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
                 const eventName = data.event || data.method;
 
