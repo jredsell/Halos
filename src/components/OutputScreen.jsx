@@ -406,12 +406,18 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           }
        }
 
-       if (videoRef.current) {
-          const v = videoRef.current;
-          if (command === 'play') { 
-              if (isMaster && !muteAudio) { v.muted = false; v.volume = 1; }
-              v.play().catch(() => {}); 
-          }
+         if (videoRef.current) {
+            const v = videoRef.current;
+            if (command === 'play') { 
+                if (isMaster && !muteAudio) { 
+                   v.muted = false; 
+                   v.volume = 1; 
+                } else {
+                   v.muted = true;
+                   v.volume = 0;
+                }
+                v.play().catch(() => {}); 
+            }
           if (command === 'pause') v.pause();
           if (command === 'seek') v.currentTime = value;
           if (command === 'volume') { if (isMaster) { v.volume = value; v.muted = (value === 0); } }
@@ -588,16 +594,22 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                       loop={payload.itemLoop ?? true}
                       className={`w-full h-full object-cover ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}
                       onLoadedMetadata={(e) => {
-                         if (isMaster) {
-                            // Ensure local video has audio (browser may have blocked it)
-                            if (!muteAudio) { e.target.muted = false; e.target.volume = 1; }
-                            statusHandlerRef.current?.({
-                               duration: e.target.duration,
-                               time: e.target.currentTime,
-                               paused: e.target.paused,
-                               ts: Date.now()
-                            });
-                         } else if (payload) {
+                          if (isMaster) {
+                             // Ensure local video has audio (browser may have blocked it)
+                             if (!muteAudio) { e.target.muted = false; e.target.volume = 1; }
+                             statusHandlerRef.current?.({
+                                duration: e.target.duration,
+                                time: e.target.currentTime,
+                                paused: e.target.paused,
+                                ts: Date.now()
+                             });
+                          } else {
+                             // FOLLOWERS/PROJECTOR MUST BE STRICTLY MUTED
+                             e.target.muted = true;
+                             e.target.volume = 0;
+                          }
+                          
+                          if (!isMaster && payload) {
                             // Follower mid-playback synchronization initialization
                             const target = payload.currentTime + (payload.isPaused ? 0 : ((Date.now() - (payload.currentTimeTs || Date.now())) / 1000));
                             e.target.currentTime = target;
@@ -632,16 +644,21 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                     muted={isMuted ? true : undefined}
                     loop={payload.itemLoop ?? false}
                     className="hidden"
-                    onLoadedMetadata={(e) => {
-                       if (isMaster) {
-                          if (!muteAudio) { e.target.muted = false; e.target.volume = 1; }
-                          statusHandlerRef.current?.({
-                             duration: e.target.duration,
-                             time: e.target.currentTime,
-                             paused: e.target.paused,
-                             ts: Date.now()
-                          });
-                       } else if (payload) {
+                      onLoadedMetadata={(e) => {
+                         if (isMaster) {
+                            if (!muteAudio) { e.target.muted = false; e.target.volume = 1; }
+                            statusHandlerRef.current?.({
+                               duration: e.target.duration,
+                               time: e.target.currentTime,
+                               paused: e.target.paused,
+                               ts: Date.now()
+                            });
+                         } else {
+                            e.target.muted = true;
+                            e.target.volume = 0;
+                         }
+                         
+                         if (!isMaster && payload) {
                           const target = payload.currentTime + (payload.isPaused ? 0 : ((Date.now() - (payload.currentTimeTs || Date.now())) / 1000));
                           e.target.currentTime = target;
                           if (!payload.isPaused) e.target.play().catch(() => {});
