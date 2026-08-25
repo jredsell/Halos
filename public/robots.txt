@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://halos-cps.netlify.app/sitemap.xml
