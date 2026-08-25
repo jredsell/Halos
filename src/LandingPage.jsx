@@ -236,12 +236,8 @@ export default function LandingPage() {
               <p className="text-xs text-neutral-400 leading-relaxed mb-6 flex-1">
                 Thank you for championing this software! Your generous support ensures HALOS remains a high-quality, free resource for churches everywhere.
               </p>
-              <a 
-                href="https://buy.stripe.com/3cI3cub8b1axb1R9tU1wY02"
-                target="_blank" rel="noopener noreferrer"
-                className="w-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition flex items-center justify-center gap-2"
-              >
-                Select Tier <ExternalLink size={14} />
+              <a href="https://buy.stripe.com/3cI3cub8b1axb1R9tU1wY02" target="_blank" rel="noopener noreferrer" className="w-full bg-amber-600 hover:bg-amber-500 text-amber-950 text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20 flex items-center justify-center gap-2">
+                SELECT TIER <ExternalLink size={14} />
               </a>
             </div>
           </div>
@@ -269,10 +265,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <Logo showText={true} className="w-5 h-5" textClassName="text-sm font-black tracking-widest text-neutral-400" />
           <div className="flex gap-6 text-xs font-bold uppercase tracking-widest text-neutral-500">
-            <button onClick={navigateToDocs} className="hover:text-white transition">Documentation</button>
-            <button onClick={navigateToApp} className="hover:text-white transition">Launch App</button>
+            <button onClick={() => window.location.href = base.replace(/\/$/, '') + '/docs'} className="text-neutral-300 hover:text-white transition font-medium">Docs</button>
+            <button onClick={() => window.location.href = base.replace(/\/$/, '') + '/app'} className="text-neutral-300 hover:text-white transition font-medium">Launch App</button>
           </div>
-          <div className="text-xs text-neutral-600">
+          <div className="text-xs text-neutral-400">
             © {new Date().getFullYear()} HALOS - Church Presentation Software. All rights reserved.
           </div>
         </div>

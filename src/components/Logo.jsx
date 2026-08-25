@@ -20,7 +20,7 @@ export default function Logo({ className = "w-6 h-6", textClassName = "text-xl f
       {showText && (
         <span className={`${textClassName} flex items-baseline gap-3`}>
           HALOS
-          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-widest hidden md:inline-block truncate">
+          <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-widest hidden md:inline-block truncate">
             - Church Presentation Software
           </span>
         </span>
