@@ -1,5 +1,6 @@
-import { Edit3, CheckCircle, Circle, Plus, Minus } from 'lucide-react';
+import { Edit3, CheckCircle, Circle, Plus, Minus, Book, ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { generateSlidesForChapter } from '../services/bibleService';
 
 /**
  * UniformTile: renders slide text at a fixed 18px font size for perfect continuity.
@@ -21,6 +22,7 @@ function UniformTile({ lines }) {
 
 export default function PreviewEditor({ 
   item, 
+  onUpdateItem,
   activeIndex, 
   selectedIndices = new Set(),
   isServiceItem = false,
@@ -33,6 +35,7 @@ export default function PreviewEditor({
   onChangeLinesPerSlide 
 }) {
   const tileRefs = useRef([]);
+  const [isChapterMenuOpen, setIsChapterMenuOpen] = useState(false);
 
   // Auto-scroll the active tile into view on keyboard navigation
   useEffect(() => {
@@ -90,6 +93,59 @@ export default function PreviewEditor({
             </button>
           )}
 
+          {/* Chapter Selector for Full Bible Books */}
+          {item.isBibleBook && item.bookData?.chapters && (
+            <div className="relative">
+               <button 
+                 onClick={() => setIsChapterMenuOpen(!isChapterMenuOpen)}
+                 className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 rounded-xl px-4 h-10 text-white font-bold text-sm transition-all"
+               >
+                 <Book size={16} className="text-neutral-400" />
+                 {item.reference?.replace(item.bookData?.book, '').trim() ? `Chapter ${item.reference.replace(item.bookData.book, '').trim()}` : 'Select Chapter...'}
+                 <ChevronDown size={14} className={`text-neutral-500 transition-transform ${isChapterMenuOpen ? 'rotate-180' : ''}`} />
+               </button>
+
+               {isChapterMenuOpen && (
+                 <>
+                   <div 
+                     className="fixed inset-0 z-40" 
+                     onClick={() => setIsChapterMenuOpen(false)} 
+                   />
+                   <div className="absolute top-full left-0 mt-2 bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl p-4 z-50 w-72 max-h-80 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 fade-in duration-200">
+                     <div className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3 px-1">Select Chapter</div>
+                     <div className="grid grid-cols-5 gap-2">
+                        {item.bookData.chapters.map(c => (
+                           <button 
+                             key={c.chapter}
+                             onClick={() => {
+                                const chapterNum = c.chapter;
+                                const generated = generateSlidesForChapter(item.bookData, chapterNum, 1);
+                                if (onUpdateItem) {
+                                   onUpdateItem({
+                                      ...item,
+                                      slides: generated.slides,
+                                      rawText: generated.rawText,
+                                      reference: generated.reference
+                                   });
+                                }
+                                setIsChapterMenuOpen(false);
+                             }}
+                             className={`aspect-square flex items-center justify-center rounded-xl font-black text-sm transition-all ${
+                               item.reference?.replace(item.bookData?.book, '').trim() === c.chapter.toString()
+                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                                 : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white'
+                             }`}
+                           >
+                              {c.chapter}
+                           </button>
+                        ))}
+                     </div>
+                   </div>
+                 </>
+               )}
+            </div>
+          )}
+
           {/* Lines per slide toggle */}
           {(isSong || item.type === 'liturgy') && onChangeLinesPerSlide && (
             <div className="flex items-center h-10 gap-1 bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden p-1">
@@ -133,7 +189,14 @@ export default function PreviewEditor({
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-32 pt-2 px-1">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-12">
+        {item.isBibleBook && slides.length === 0 ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-neutral-500">
+             <Book size={48} className="mb-4 opacity-50" />
+             <p className="text-xl font-bold tracking-widest uppercase text-neutral-400">Select a Chapter</p>
+             <p className="text-sm mt-2 font-medium opacity-75">Choose a chapter from the dropdown above to view verses.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-x-8 gap-y-12">
           {slides.map((slide, i) => {
             const isResponse = slide.type === 'response';
             const isActiveCard = i === activeIndex;
@@ -212,6 +275,7 @@ export default function PreviewEditor({
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

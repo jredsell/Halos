@@ -260,6 +260,21 @@ export async function fetchLocalBiblePassage(libraryHandle, folderName, referenc
   });
 }
 
+export function generateSlidesForChapter(bookData, chapterNumber, linesPerSlide = 1) {
+  const chapter = bookData.chapters.find(c => c.chapter.toString() === chapterNumber.toString());
+  if (!chapter) return { rawText: "", slides: [] };
+
+  let combinedRawText = "";
+  for (const v of chapter.verses) {
+     combinedRawText += `[${v.verse}] ${v.text} `;
+  }
+  combinedRawText = combinedRawText.replace(/\s+/g, ' ').trim();
+  const reference = `${bookData.book} ${chapterNumber}`;
+  const slides = parseBibleText(combinedRawText, reference, linesPerSlide);
+  
+  return { rawText: combinedRawText, slides, reference };
+}
+
 /**
  * Parses a Bible reference string into structured components.
  * Returns null if the format is not recognized.
@@ -285,6 +300,18 @@ function parseReference(ref) {
 }
 
 export function processBibleJson(data) {
+  // Check if it's a full book JSON
+  if (data.chapters && Array.isArray(data.chapters)) {
+     return {
+       reference: data.book || "Imported Bible Book",
+       translation: "Local",
+       isBibleBook: true,
+       bookData: data,
+       rawText: "",
+       slides: []
+     };
+  }
+
   let combinedRawText = "";
 
   for (const v of data.verses) {
@@ -292,12 +319,12 @@ export function processBibleJson(data) {
   }
   
   combinedRawText = combinedRawText.replace(/\s+/g, ' ').trim();
-  const slides = parseBibleText(combinedRawText, data.reference, 4); // Default to 4
+  const slides = parseBibleText(combinedRawText, data.reference, 1); // Default to 1 verse per slide
 
   return {
     reference: data.reference,
     translation: data.translation_id || 'KJV',
     rawText: combinedRawText,
-    slides
+    slides: slides
   };
 }

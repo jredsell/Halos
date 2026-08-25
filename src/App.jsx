@@ -1272,9 +1272,10 @@ function App() {
                     <h3 className="text-3xl font-extrabold mb-4 text-white tracking-widest">{selectedItem.title}</h3>
                     <p className="text-neutral-400 text-sm max-w-md font-medium leading-relaxed">Presentations and Document files cannot be natively controlled or paginated inside a web browser frame.<br/><br/>Please export your slides or pages as images (.jpg or .png) and drop them into the Images folder for native viewing, or use an external application alongside Halos.</p>
                  </div>
-              ) : selectedItem?.slides ? (
+              ) : (selectedItem?.slides || selectedItem?.isBibleBook) ? (
                   <PreviewEditor 
                     item={selectedItem} 
+                    onUpdateItem={(newItem) => setSelectedItem(newItem)}
                     activeIndex={activeSlideIndex} 
                     linesPerSlide={selectedItem.type === 'bible' ? 1 : linesPerSlide}
                     selectedIndices={selectedIndices}
