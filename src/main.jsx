@@ -1,11 +1,13 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App.jsx'
-import ProjectorWindow from './components/ProjectorWindow.jsx'
-import LiveViewer from './components/LiveViewer.jsx'
 import LandingPage from './LandingPage.jsx'
-import DocsPage from './DocsPage.jsx'
 import './index.css'
+
+// Lazily load heavy application components so the landing page loads instantly
+const App = lazy(() => import('./App.jsx'));
+const ProjectorWindow = lazy(() => import('./components/ProjectorWindow.jsx'));
+const LiveViewer = lazy(() => import('./components/LiveViewer.jsx'));
+const DocsPage = lazy(() => import('./DocsPage.jsx'));
 
 // Hard Route Controller
 const path = window.location.pathname;
@@ -34,9 +36,18 @@ const renderApp = () => {
   return <LandingPage />;
 };
 
+// Global loading spinner for suspense fallback
+const LoadingFallback = () => (
+  <div className="h-screen w-screen flex items-center justify-center bg-neutral-950">
+    <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+  </div>
+);
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {renderApp()}
+    <Suspense fallback={<LoadingFallback />}>
+      {renderApp()}
+    </Suspense>
   </StrictMode>,
 )
 
