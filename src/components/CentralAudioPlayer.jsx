@@ -2,10 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Repeat } from 'lucide-react';
 
 export default function CentralAudioPlayer({ 
-    item, 
-    isLiveItem, 
-    playbackStatus, 
-    setPresentationPaused 
+    item
 }) {
     const [localTime, setLocalTime] = useState(0);
     const [localDuration, setLocalDuration] = useState(0);
@@ -24,18 +21,10 @@ export default function CentralAudioPlayer({
         setLocalDuration(0);
         setLocalPaused(true);
         setLocalVolume(1);
-    }, [item?.url]);
-
-    // Sync with live output
-    useEffect(() => {
-        if (isLiveItem && playbackStatus) {
-            if (playbackStatus.time !== undefined && !isDragging.current) setLocalTime(playbackStatus.time);
-            if (playbackStatus.duration !== undefined) setLocalDuration(playbackStatus.duration);
-            if (playbackStatus.paused !== undefined) setLocalPaused(playbackStatus.paused);
-            // playbackStatus might not always contain volume, so we rely on localVolume for the UI mostly
-            if (playbackStatus.volume !== undefined && !isDraggingVol.current) setLocalVolume(playbackStatus.volume);
+        if (audioRef.current) {
+            audioRef.current.volume = 1;
         }
-    }, [isLiveItem, playbackStatus]);
+    }, [item?.url]);
 
     const formatTime = (sec) => {
         if (!sec || isNaN(sec) || sec <= 0) return "0:00";
@@ -46,39 +35,25 @@ export default function CentralAudioPlayer({
 
     const handlePlayPause = () => {
         const nextPaused = !localPaused;
-        setLocalPaused(nextPaused); // Optimistic UI update
-        
-        if (isLiveItem) {
-            const channel = new BroadcastChannel('halos-projector-hub');
-            channel.postMessage({ type: 'playback', command: nextPaused ? 'pause' : 'play', source: 'dashboard-ui' });
-            channel.close();
-            setPresentationPaused(nextPaused);
+        setLocalPaused(nextPaused);
+        if (nextPaused) {
+            audioRef.current?.pause();
         } else {
-            if (nextPaused) audioRef.current?.pause();
-            else audioRef.current?.play();
+            if (audioRef.current) {
+                audioRef.current.volume = localVolume;
+                audioRef.current.play().catch(e => console.error("Preview play failed:", e));
+            }
         }
     };
 
     const handleSeek = (val) => {
-        setLocalTime(val); // Optimistic UI update
-        if (isLiveItem) {
-            const channel = new BroadcastChannel('halos-projector-hub');
-            channel.postMessage({ type: 'playback', command: 'seek', value: val, source: 'dashboard-ui' });
-            channel.close();
-        } else {
-            if (audioRef.current) audioRef.current.currentTime = val;
-        }
+        setLocalTime(val);
+        if (audioRef.current) audioRef.current.currentTime = val;
     };
 
     const handleVolume = (val) => {
-        setLocalVolume(val); // Optimistic UI update
-        if (isLiveItem) {
-            const channel = new BroadcastChannel('halos-projector-hub');
-            channel.postMessage({ type: 'playback', command: 'volume', value: val, source: 'dashboard-ui' });
-            channel.close();
-        } else {
-            if (audioRef.current) audioRef.current.volume = val;
-        }
+        setLocalVolume(val);
+        if (audioRef.current) audioRef.current.volume = val;
     };
 
     const toggleMute = () => {
@@ -92,44 +67,28 @@ export default function CentralAudioPlayer({
 
     const toggleLoop = () => {
         const nextLoop = !isLooping;
-        setIsLooping(nextLoop); // Optimistic UI update
-        if (isLiveItem) {
-            const channel = new BroadcastChannel('halos-projector-hub');
-            channel.postMessage({ type: 'playback', command: 'loop', value: nextLoop, source: 'dashboard-ui' });
-            channel.close();
-        } else {
-            if (audioRef.current) audioRef.current.loop = nextLoop;
-        }
+        setIsLooping(nextLoop);
+        if (audioRef.current) audioRef.current.loop = nextLoop;
     };
 
     return (
         <div className="w-full bg-neutral-900/80 border border-neutral-800 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 max-w-2xl mx-auto mt-4 relative overflow-hidden">
-            {!isLiveItem && (
-                <audio 
-                    ref={audioRef} 
-                    src={item.url} 
-                    onTimeUpdate={(e) => { if (!isDragging.current) setLocalTime(e.target.currentTime); }}
-                    onLoadedMetadata={(e) => setLocalDuration(e.target.duration)}
-                    onEnded={() => setLocalPaused(true)}
-                    onPlay={() => setLocalPaused(false)}
-                    onPause={() => setLocalPaused(true)}
-                    className="hidden" 
-                />
-            )}
+            <audio 
+                ref={audioRef} 
+                src={item.url} 
+                onTimeUpdate={(e) => { if (!isDragging.current) setLocalTime(e.target.currentTime); }}
+                onLoadedMetadata={(e) => setLocalDuration(e.target.duration)}
+                onEnded={() => setLocalPaused(true)}
+                onPlay={() => setLocalPaused(false)}
+                onPause={() => setLocalPaused(true)}
+                className="hidden" 
+            />
             
-            <div className={`absolute top-0 left-0 w-full h-1 ${isLiveItem ? 'bg-green-500 animate-pulse' : 'bg-neutral-800'}`} />
+            <div className="absolute top-0 left-0 w-full h-1 bg-neutral-800" />
 
-            {isLiveItem && (
-                <div className="text-[10px] text-green-400 font-bold uppercase tracking-widest text-center mb-1 flex items-center justify-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    Controlling Live Output
-                </div>
-            )}
-            {!isLiveItem && (
-                <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest text-center mb-1">
-                    Local Preview Mode
-                </div>
-            )}
+            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest text-center mb-1">
+                Local Preview Mode
+            </div>
 
             <div className="flex items-center gap-5 w-full">
                 <div className="flex items-center gap-3">

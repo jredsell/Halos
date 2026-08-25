@@ -294,7 +294,7 @@ export default function LiveControl({
               <OutputScreen
                 payload={livePayload}
                 isMaster={!projectorConnected || !isLive}
-                muteAudio={true}
+                muteAudio={livePayload?.mediaType !== 'audio'}
                 isProjector={false}
                 onStatusUpdate={handleStatusUpdate}
                 remoteCommand={localRemoteCommand || remoteCommand}

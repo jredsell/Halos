@@ -14,32 +14,34 @@ export default function ImageArrayViewer({ images, currentIndex, onSelectIndex, 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex justify-between items-start mb-6 border-b border-neutral-800/50 pb-4">
-        <div className="flex flex-col">
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">{title}</h2>
-          <div className="text-sm font-bold text-neutral-400 mt-2 uppercase tracking-widest leading-none">
-            {images.length} Image{images.length !== 1 ? 's' : ''}
-          </div>
-        </div>
-
+      <div className="flex flex-col mb-6 border-b border-neutral-800/50 pb-4 gap-4">
         <div className="flex items-center gap-3">
             {isServiceItem ? (
-              <button
-                onClick={onRemoveSelectedFromService}
-                className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-red-900/20 active:scale-95"
-              >
-                <Minus size={16} strokeWidth={3} />
-                Remove From Service
-              </button>
+              selectedIndices?.size > 0 && (
+                <button
+                  onClick={onRemoveSelectedFromService}
+                  className="flex items-center justify-center h-10 gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-red-900/20 active:scale-95"
+                >
+                  <Minus size={16} strokeWidth={3} />
+                  Remove Selected ({selectedIndices.size})
+                </button>
+              )
             ) : (
               <button
                 onClick={onAddSelectedToService}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95"
+                className="flex items-center justify-center h-10 gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95"
               >
                 <Plus size={16} strokeWidth={3} />
                 {selectedIndices?.size > 0 ? `Add Selected (${selectedIndices.size})` : 'Add To Service'}
               </button>
             )}
+        </div>
+
+        <div className="flex flex-col">
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">{title}</h2>
+          <div className="text-sm font-bold text-neutral-400 mt-2 uppercase tracking-widest leading-none">
+            {images.length} Image{images.length !== 1 ? 's' : ''}
+          </div>
         </div>
       </div>
 

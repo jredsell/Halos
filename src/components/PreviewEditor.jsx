@@ -61,39 +61,27 @@ export default function PreviewEditor({
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex justify-between items-start mb-6 border-b border-neutral-800/50 pb-4">
-        <div className="flex flex-col">
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">{title}</h2>
-          {subtitle && (
-            <div className="text-sm font-bold text-neutral-400 mt-2 uppercase tracking-widest leading-none">
-              {subtitle}
-            </div>
-          )}
-        </div>
-
+      <div className="flex flex-col mb-6 border-b border-neutral-800/50 pb-4 gap-4">
         <div className="flex items-center gap-3">
           {/* Dynamic "Add/Remove Selected" Button */}
           {isServiceItem ? (
-            <button
-              onClick={() => {
-                if (selectedIndices.size > 0 && onRemoveSelectedFromService) {
-                   onRemoveSelectedFromService();
-                } else if (onRemoveSelectedFromService) {
-                   // If they click it with 0 selected, maybe remove the whole item?
-                   // Wait, App.jsx handles handleDeleteItem separately, but we can pass onRemoveSelectedFromService
-                   // Actually in App.jsx: onRemoveSelectedFromService={() => handleDeleteItem(selectedItem.id)} if size===0
-                   onRemoveSelectedFromService();
-                }
-              }}
-              className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-red-900/20 active:scale-95"
-            >
-              <Minus size={16} strokeWidth={3} />
-              {selectedIndices?.size > 0 ? `Remove Selected (${selectedIndices.size})` : 'Remove From Service'}
-            </button>
+            selectedIndices?.size > 0 && (
+              <button
+                onClick={() => {
+                  if (onRemoveSelectedFromService) {
+                     onRemoveSelectedFromService();
+                  }
+                }}
+                className="flex items-center justify-center h-10 gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-red-900/20 active:scale-95"
+              >
+                <Minus size={16} strokeWidth={3} />
+                Remove Selected ({selectedIndices.size})
+              </button>
+            )
           ) : (
             <button
               onClick={onAddSelectedToService}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95"
+              className="flex items-center justify-center h-10 gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95"
             >
               <Plus size={16} strokeWidth={3} />
               {selectedIndices?.size > 0 
@@ -103,14 +91,14 @@ export default function PreviewEditor({
           )}
 
           {/* Lines per slide toggle */}
-          {(isSong || item.type === 'liturgy' || item.type === 'bible') && onChangeLinesPerSlide && (
-            <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden p-1">
+          {(isSong || item.type === 'liturgy') && onChangeLinesPerSlide && (
+            <div className="flex items-center h-10 gap-1 bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden p-1">
               <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400 px-2">Lines</span>
               {[1, 2, 3, 4].map(n => (
                 <button
                   key={n}
                   onClick={() => onChangeLinesPerSlide(n)}
-                  className={`w-8 h-7 text-xs font-black rounded-lg transition-all ${
+                  className={`w-8 h-8 text-xs font-black rounded-lg transition-all ${
                     linesPerSlide === n
                       ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]'
                       : 'text-neutral-400 hover:text-white hover:bg-neutral-700'
@@ -122,14 +110,23 @@ export default function PreviewEditor({
             </div>
           )}
 
-          {isSong && onEdit && (
+          {(isSong || item.type === 'liturgy') && onEdit && (
             <button
               onClick={() => onEdit(item)}
-              className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-xl border border-neutral-700/50 transition-all font-bold text-xs uppercase tracking-widest shadow-lg transform hover:-translate-y-0.5 active:translate-y-0"
+              className="flex items-center justify-center h-10 gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-xl border border-neutral-700/50 transition-all font-bold text-xs uppercase tracking-widest shadow-lg transform hover:-translate-y-0.5 active:translate-y-0"
             >
               <Edit3 size={14} className="text-blue-400" />
-              Edit Song
+              {isSong ? 'Edit Song' : 'Edit Liturgy'}
             </button>
+          )}
+        </div>
+
+        <div className="flex flex-col">
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">{title}</h2>
+          {subtitle && (
+            <div className="text-sm font-bold text-neutral-400 mt-2 uppercase tracking-widest leading-none">
+              {subtitle}
+            </div>
           )}
         </div>
       </div>

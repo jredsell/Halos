@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Peer } from 'peerjs'
-import { ExternalLink, Check, Settings, Heart, BookOpen } from 'lucide-react'
+import { ExternalLink, Check, Settings, Heart, BookOpen, Plus } from 'lucide-react'
 import FileSystemSetup from './components/FileSystemSetup'
 import { getStoredDirectoryHandle } from './utils/fileSystem'
 import Sidebar from './components/Sidebar'
@@ -294,7 +294,7 @@ function App() {
             } else if (item.type === 'liturgy') {
                 parsedSlides = parseLiturgyMarkdown(item.rawText, linesPerSlide).slides;
             } else if (item.type === 'bible') {
-                parsedSlides = parseBibleText(item.rawText, item.reference || item.title, linesPerSlide);
+                parsedSlides = parseBibleText(item.rawText, item.reference || item.title, 1);
             }
             return { ...item, slides: parsedSlides };
          }
@@ -703,40 +703,16 @@ function App() {
          setActiveTab('new_liturgy');
          return;
       }
-      if (item.type === 'liturgy') {
-         // Re-parse to ensure slides are fresh
-         let fresh = item;
-         if (item.rawText) {
-           const parsed = parseLiturgyMarkdown(item.rawText, linesPerSlide);
-           fresh = { ...item, slides: parsed.slides };
-         }
-         setSelectedItem(fresh);
-         // If selecting from Service tab, set live output but stay on Service view
-         if (activeTab === 'Service' || forceLive) {
-           setRemoteCommand(null);
-           setLiveItem(fresh);
-           setLiveSlideIndex(0);
-           setPlayedItems(prev => new Set(prev).add(fresh.id));
-         }
-         // Only switch to Liturgy tab if we're being called from the Liturgy sidebar
-         if (activeTab === 'Liturgy') {
-           // show editor
-         }
-         setActiveSlideIndex(0);
-         setSelectedIndices(new Set());
-         setIsClearText(false);
-         return;
-      }
+
       
       let itemToView = { ...item };
       
 
-       // Always re-parse songs, liturgy and bible so linesPerSlide is respected
        if ((item.type === 'song' || item.type === 'liturgy' || item.type === 'bible') && item.rawText) {
           let parsedSlides;
           if (item.type === 'song') parsedSlides = parseSongMarkdown(item.rawText, linesPerSlide).slides;
           else if (item.type === 'liturgy') parsedSlides = parseLiturgyMarkdown(item.rawText, linesPerSlide).slides;
-          else if (item.type === 'bible') parsedSlides = parseBibleText(item.rawText, item.reference || item.title, linesPerSlide);
+          else if (item.type === 'bible') parsedSlides = parseBibleText(item.rawText, item.reference || item.title, 1);
           
           itemToView = { ...item, slides: parsedSlides };
        }
@@ -1137,7 +1113,7 @@ function App() {
             </div>
             
             <div className="flex-1 p-8 bg-neutral-950/90 overflow-y-auto relative custom-scrollbar flex flex-col z-0">
-              {(activeTab === 'new_liturgy' || (activeTab === 'Liturgy' && selectedItem?.type === 'liturgy')) ? (
+              {(activeTab === 'new_liturgy' || activeTab === 'edit_liturgy') ? (
                  <LiturgyEditor
                    libraryHandle={libraryHandle}
                    initialFile={selectedItem?.type === 'liturgy' && selectedItem?.fileHandle
@@ -1200,68 +1176,82 @@ function App() {
                     }}
                   />
                ) : selectedItem?.type === 'video' ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-black rounded-2xl border border-neutral-800 p-8 shadow-inner overflow-hidden relative">
-                     <div className="absolute top-4 left-4 z-10 text-xs font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-3">
-                        {selectedItem.title}
-                        {selectedItem.isExternal && (
-                          <a 
-                            href={selectedItem.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="flex items-center gap-1.5 text-[9px] bg-neutral-800 hover:bg-neutral-700 px-2 py-0.5 rounded border border-neutral-700 transition text-neutral-400 hover:text-blue-400"
-                          >
-                            <ExternalLink size={10} /> OPEN SOURCE
-                          </a>
+                  <div className="w-full h-full flex flex-col bg-black rounded-2xl border border-neutral-800 p-8 shadow-inner overflow-hidden relative">
+                     {/* Header matches PreviewEditor */}
+                     <div className="flex flex-col mb-6 border-b border-neutral-800/50 pb-4 gap-4">
+                        <div className="flex items-center gap-3">
+                           {activeTab !== 'Service' && (
+                              <button 
+                                 onClick={handleAddToService}
+                                 className={`flex items-center justify-center h-10 gap-2 px-6 py-2 ${showAddedFeedback ? 'bg-green-600 hover:bg-green-500 shadow-green-900/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'} text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg active:scale-95`}
+                              >
+                                 {showAddedFeedback ? <Check size={16} strokeWidth={3} /> : <Plus size={16} strokeWidth={3} />}
+                                 {showAddedFeedback ? 'ADDED!' : 'Add to Service'}
+                              </button>
+                           )}
+                           {selectedItem.isExternal && (
+                             <a 
+                               href={selectedItem.url} 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               className="flex items-center gap-1.5 h-10 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-xl border border-neutral-700/50 transition-all font-bold text-xs uppercase tracking-widest shadow-lg transform hover:-translate-y-0.5 active:translate-y-0"
+                             >
+                               <ExternalLink size={14} className="text-blue-400" /> Open Source
+                             </a>
+                           )}
+                        </div>
+                        <div className="flex flex-col">
+                           <h2 className="text-3xl font-extrabold text-white tracking-tight">{selectedItem.title}</h2>
+                        </div>
+                     </div>
+                     
+                     <div className="flex-1 w-full h-full min-h-0 flex items-center justify-center">
+                        {(selectedItem.isYouTube || selectedItem.isVimeo) ? (
+                          <iframe 
+                            src={selectedItem.url} 
+                            className="w-full h-full rounded-lg" 
+                            frameBorder="0" 
+                            allow="autoplay; fullscreen; picture-in-picture; encrypted-media" 
+                            allowFullScreen
+                          />
+                        ) : (
+                          <video src={selectedItem.url} controls className="w-full h-full object-contain rounded-lg" />
                         )}
                      </div>
-                     {(selectedItem.isYouTube || selectedItem.isVimeo) ? (
-                       <iframe 
-                         src={selectedItem.url} 
-                         className="w-full h-full rounded-lg" 
-                         frameBorder="0" 
-                         allow="autoplay; fullscreen; picture-in-picture; encrypted-media" 
-                         allowFullScreen
-                       />
-                     ) : (
-                       <video src={selectedItem.url} controls className="w-full h-full object-contain rounded-lg" />
-                     )}
-                     {/* Quick Add for Video */}
-                     {activeTab !== 'Service' && (
-                        <button 
-                           onClick={handleAddToService}
-                           className={`absolute bottom-6 right-6 ${showAddedFeedback ? 'bg-green-600 hover:bg-green-500 border-green-400/30 shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'bg-blue-600 hover:bg-blue-500 border-blue-400/30 shadow-2xl'} text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl border transition active:scale-95 z-20 flex items-center gap-2`}
-                        >
-                           {showAddedFeedback ? <Check size={14} /> : <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>}
-                           {showAddedFeedback ? 'ADDED!' : 'Add to Service'}
-                        </button>
-                     )}
                   </div>
                ) : selectedItem?.type === 'audio' ? (
-                   <div className="w-full h-full flex flex-col items-center justify-center bg-black rounded-2xl border border-neutral-800 p-12 shadow-inner overflow-hidden relative">
-                       <div className="flex flex-col items-center gap-8 max-w-2xl w-full">
-                           <div className="w-24 h-24 bg-purple-600/20 rounded-full flex items-center justify-center border border-purple-500/30">
-                               <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-500"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                   <div className="w-full h-full flex flex-col bg-black rounded-2xl border border-neutral-800 p-8 shadow-inner overflow-hidden relative">
+                       {/* Header matches PreviewEditor */}
+                       <div className="flex flex-col mb-6 border-b border-neutral-800/50 pb-4 gap-4">
+                          <div className="flex items-center gap-3">
+                             {activeTab !== 'Service' && (
+                                <button 
+                                   onClick={handleAddToService}
+                                   className={`flex items-center justify-center h-10 gap-2 px-6 py-2 ${showAddedFeedback ? 'bg-green-600 hover:bg-green-500 shadow-green-900/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'} text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg active:scale-95`}
+                                >
+                                   {showAddedFeedback ? <Check size={16} strokeWidth={3} /> : <Plus size={16} strokeWidth={3} />}
+                                   {showAddedFeedback ? 'ADDED TO SERVICE' : 'Add Audio to Service'}
+                                </button>
+                             )}
+                          </div>
+                          <div className="flex flex-col">
+                             <h2 className="text-3xl font-extrabold text-white tracking-tight">{selectedItem.title}</h2>
+                          </div>
+                       </div>
+                       
+                       <div className="flex-1 w-full h-full min-h-0 flex items-center justify-center">
+                           <div className="flex flex-col items-center gap-8 max-w-2xl w-full">
+                               <div className="w-24 h-24 bg-purple-600/20 rounded-full flex items-center justify-center border border-purple-500/30">
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-500"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                               </div>
+                               
+                               <CentralAudioPlayer 
+                                   item={selectedItem}
+                                   isLiveItem={liveItem?.id === selectedItem?.id}
+                                   playbackStatus={playbackStatus}
+                                   setPresentationPaused={setPresentationPaused}
+                               />
                            </div>
-                           <div className="text-center">
-                               <h3 className="text-2xl font-black text-white tracking-widest mb-2 italic uppercase">{selectedItem.title}</h3>
-                           </div>
-                           
-                           <CentralAudioPlayer 
-                               item={selectedItem}
-                               isLiveItem={liveItem?.id === selectedItem?.id}
-                               playbackStatus={playbackStatus}
-                               setPresentationPaused={setPresentationPaused}
-                           />
-                           
-                           {activeTab !== 'Service' && (
-                             <button 
-                               onClick={handleAddToService}
-                               className={`mt-4 w-full max-w-md ${showAddedFeedback ? 'bg-green-600 hover:bg-green-500 border-green-400/20 shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'bg-blue-600 hover:bg-blue-500 border-blue-400/20 shadow-xl'} text-white text-[11px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl transition border active:scale-95 flex justify-center items-center gap-2 mx-auto`}
-                             >
-                               {showAddedFeedback ? <Check size={16} /> : <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>}
-                               {showAddedFeedback ? 'ADDED TO SERVICE' : 'Add Audio to Service'}
-                             </button>
-                           )}
                        </div>
                    </div>
                ) : selectedItem?.type === 'folder_explorer' ? (
@@ -1286,7 +1276,7 @@ function App() {
                   <PreviewEditor 
                     item={selectedItem} 
                     activeIndex={activeSlideIndex} 
-                    linesPerSlide={linesPerSlide}
+                    linesPerSlide={selectedItem.type === 'bible' ? 1 : linesPerSlide}
                     selectedIndices={selectedIndices}
                     isServiceItem={serviceItems.some(si => si.id === selectedItem?.id)}
                     onToggleSelection={(idx) => {
@@ -1296,9 +1286,13 @@ function App() {
                        setSelectedIndices(next);
                     }}
                     onSelectIndex={handleSetSlideIndex} 
-                    onEdit={(song) => {
-                       setEditingSong(song);
-                       setActiveTab('new_song');
+                    onEdit={(item) => {
+                       if (item.type === 'song') {
+                           setEditingSong(item);
+                           setActiveTab('new_song');
+                       } else if (item.type === 'liturgy') {
+                           setActiveTab('edit_liturgy');
+                       }
                     }}
                     onAddSelectedToService={handleAddToService}
                     onRemoveSelectedFromService={() => {

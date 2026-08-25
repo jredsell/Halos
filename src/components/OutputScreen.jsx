@@ -714,7 +714,7 @@ export default function OutputScreen({ payload, isMaster = false, isProjector = 
                     />
                  )
               )}
-              {payload.mediaType === 'audio' && payload.activeMediaUrl && !new URLSearchParams(window.location.search).get('projector') && !new URLSearchParams(window.location.search).get('network') && (
+              {payload.mediaType === 'audio' && payload.activeMediaUrl && (
                   <audio
                     ref={videoRef}
                     key={payload.activeMediaUrl}
