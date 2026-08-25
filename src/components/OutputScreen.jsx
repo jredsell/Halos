@@ -100,9 +100,8 @@ function AutoFitLiturgy({ lines, liturgyType = 'speaker', alignment = 'center', 
   );
 }
 
-// muteAudio: force-silence this instance (used by dashboard preview monitor).
-// isMaster: this instance drives playback & reports status.
-export default function OutputScreen({ payload, isMaster = false, isLiveBroadcast = false, muteAudio = false, onStatusUpdate = null, remoteCommand = null }) {
+// isProjector: this instance is running on the dedicated projector screen, so it MUST go to standby if !isLive
+export default function OutputScreen({ payload, isMaster = false, isProjector = false, isLiveBroadcast = false, muteAudio = false, onStatusUpdate = null, remoteCommand = null }) {
     const videoRef = useRef(null);
     const stickyAudioRef = useRef(null);
     const iframeRef = useRef(null);
@@ -122,6 +121,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     const isMutingReports = useRef(false);
     const isVimeoReady = useRef(false);
     const pendingPlayCommandRef = useRef(false);
+    const lastSeekTsRef = useRef(0);
 
     // 1. URL/Mute Engine
     const iframeSrc = useMemo(() => {
@@ -153,9 +153,11 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        // For master (projector/preview): respect the item's autoPlay setting, but only if Live is enabled.
        // For followers (network view): autoplay only if the master is actively playing.
        if (!isMaster) {
-          urlObj.searchParams.set('autoplay', payload?.isPaused ? '0' : '1');
+          if (!payload?.isLive || payload?.isPaused) urlObj.searchParams.delete('autoplay');
+          else urlObj.searchParams.set('autoplay', '1');
        } else {
-          urlObj.searchParams.set('autoplay', (payload.itemAutoPlay && payload.isLive) ? '1' : '0');
+          if (payload.itemAutoPlay && payload.isLive) urlObj.searchParams.set('autoplay', '1');
+          else urlObj.searchParams.delete('autoplay');
        }
 
 
@@ -201,6 +203,9 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           setTimeout(() => {
              sendIframeCommand('unMute');
              sendIframeCommand('setVolume', [100]);
+             sendIframeCommand('setOption', ['captions', 'track', {}]);
+             sendIframeCommand('unloadModule', ['captions']);
+             sendIframeCommand('unloadModule', ['cc']);
           }, 100);
        } else if (payload?.isVimeo) {
           sendVimeoCommand('setMuted', false);
@@ -208,13 +213,28 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           setTimeout(() => {
              sendVimeoCommand('setMuted', false);
              sendVimeoCommand('setVolume', 1);
-             if (followerTimeRef.current <= 0) sendVimeoCommand('setCurrentTime', 0.1);
-             else if (!payload?.isPaused) sendVimeoCommand('play');
+             
+             let jumpTime = payload?.currentTime || 0.1;
+             if (payload?.currentTimeTs && !payload?.isPaused) {
+                 jumpTime += ((Date.now() - payload.currentTimeTs) / 1000);
+             }
+             sendVimeoCommand('seekTo', jumpTime);
+             
+             if (!payload?.isPaused) sendVimeoCommand('play');
           }, 500);
        } else if (videoRef.current) {
           // Local video/audio: unmute programmatically
           videoRef.current.muted = false;
           videoRef.current.volume = 1;
+          
+          if (payload?.currentTime) {
+             let jumpTime = payload.currentTime;
+             if (payload.currentTimeTs && !payload.isPaused) {
+                 jumpTime += ((Date.now() - payload.currentTimeTs) / 1000);
+             }
+             videoRef.current.currentTime = jumpTime;
+          }
+
           if (!payload?.isPaused) {
               videoRef.current.play().catch(() => {});
           }
@@ -227,14 +247,35 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        }
     };
 
-    useEffect(() => { if (hasInteracted && isMaster) forceUnmute(); }, [hasInteracted]);
+    useEffect(() => {
+        if (isMaster) setHasInteracted(true);
+    }, [isMaster]);
+
+    useEffect(() => { if (hasInteracted && isMaster) forceUnmute(); }, [hasInteracted, isMaster, payload?.activeMediaUrl]);
 
     // 3. YouTube & Vimeo Status Polling (Master only)
-    const statusHandlerRef = useRef(onStatusUpdate);
-    useEffect(() => { statusHandlerRef.current = onStatusUpdate; }, [onStatusUpdate]);
+    const handleStatusUpdate = (status) => {
+        if (onStatusUpdate) onStatusUpdate(status);
+        if (isProjector) {
+            const bc = new BroadcastChannel('halos-projector-hub');
+            bc.postMessage({ type: 'status', itemId: payload?.itemId, ...status });
+            bc.close();
+        }
+    };
+    
+    const statusHandlerRef = useRef(handleStatusUpdate);
+    useEffect(() => {
+       statusHandlerRef.current = handleStatusUpdate;
+    }, [onStatusUpdate, isProjector, payload?.itemId]);
 
     useEffect(() => {
        if (!payload?.activeMediaUrl) return;
+       
+       // Reset state for new media
+       followerPausedRef.current = payload.isPaused ?? true;
+       followerTimeRef.current = payload.currentTime ?? 0;
+       isVimeoReady.current = false;
+
        if (!payload.isYouTube && !payload.isVimeo) return;
 
        pendingPlayCommandRef.current = false;
@@ -249,16 +290,39 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
                 const info = data.info || data.data;
                 if ((data.event === 'infoDelivery' || data.event === 'initialDelivery' || data.event === 'onStateChange') && info) {
-                   if (!isYouTubeListening && (data.event === 'initialDelivery' || data.event === 'infoDelivery') && hasInteractedRef.current && isMaster && !muteAudio) {
-                      sendIframeCommand('unMute');
-                      sendIframeCommand('setVolume', [100]);
+                   if (!isYouTubeListening) {
+                      sendIframeCommand('setOption', ['captions', 'track', {}]);
+                      sendIframeCommand('unloadModule', ['captions']);
+                      sendIframeCommand('unloadModule', ['cc']);
                    }
+                    if (!isYouTubeListening && (data.event === 'initialDelivery' || data.event === 'infoDelivery')) {
+                       if (hasInteractedRef.current && isMaster && !muteAudio) {
+                           sendIframeCommand('unMute');
+                           sendIframeCommand('setVolume', [100]);
+                       }
+                       // If we're booting up and the payload says we should be playing, jumpstart!
+                       if (payload && !payload.isPaused) {
+                           let jumpTime = payload.currentTime;
+                           if (payload.currentTimeTs) {
+                               jumpTime += ((Date.now() - payload.currentTimeTs) / 1000);
+                           }
+                           // If we are a follower, add 0.6s to compensate for buffering so we land in sync.
+                           sendIframeCommand('seekTo', [jumpTime + (isMaster ? 0 : 0.6), true]);
+                           sendIframeCommand('playVideo');
+                       }
+                    }
                    isYouTubeListening = true;
 
                    const time = info.currentTime ?? followerTimeRef.current;
                    const duration = info.duration ?? followerDurationRef.current;
                    const paused = info.playerState !== undefined ? (info.playerState !== 1 && info.playerState !== 3) : followerPausedRef.current;
                    followerPausedRef.current = paused;
+                   
+                   if (info.playerState === 1) {
+                       sendIframeCommand('setOption', ['captions', 'track', {}]);
+                       sendIframeCommand('unloadModule', ['captions']);
+                       sendIframeCommand('unloadModule', ['cc']);
+                   }
                    
                    // Force unmute when transitioning to play if it's the master and we have a pending play command
                    if (info.playerState === 1 && pendingPlayCommandRef.current && isMaster && !muteAudio && !isMutingReports.current) {
@@ -272,7 +336,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                       if (now - lastStatusTs > 500 || paused !== lastPaused) {
                           lastStatusTs = now;
                           lastPaused = paused;
-                          statusHandlerRef.current?.({ time, duration, paused, ts: now });
+                          if (isMaster && !isMutingReports.current) statusHandlerRef.current?.({ time, duration, paused, ts: now });
                       }
                       followerTimeRef.current = time;
                       followerDurationRef.current = duration;
@@ -311,24 +375,24 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                    const now = Date.now();
                    if (now - lastStatusTs > 500) {
                       lastStatusTs = now;
-                      statusHandlerRef.current?.({ time, duration, paused: followerPausedRef.current, ts: now });
+                      if (isMaster && !isMutingReports.current) statusHandlerRef.current?.({ time, duration, paused: followerPausedRef.current, ts: now });
                    }
                    followerTimeRef.current = time;
                    followerDurationRef.current = duration;
                 } else if (eventName === 'play') {
-                   statusHandlerRef.current?.({ paused: false, ts: Date.now() });
+                   if (isMaster && !isMutingReports.current) statusHandlerRef.current?.({ paused: false, ts: Date.now() });
                    followerPausedRef.current = false;
                 } else if (eventName === 'pause') {
-                   statusHandlerRef.current?.({ paused: true, ts: Date.now() });
+                   if (isMaster && !isMutingReports.current) statusHandlerRef.current?.({ paused: true, ts: Date.now() });
                    followerPausedRef.current = true;
                 } else if (eventName === 'finish') {
-                   statusHandlerRef.current?.({ paused: true, time: followerDurationRef.current, ts: Date.now() });
+                   if (isMaster && !isMutingReports.current) statusHandlerRef.current?.({ paused: true, time: followerDurationRef.current, ts: Date.now() });
                    followerPausedRef.current = true;
                 } else if (data.method === 'getCurrentTime') {
-                   statusHandlerRef.current?.({ time: data.value, ts: Date.now() });
+                   if (isMaster && !isMutingReports.current) statusHandlerRef.current?.({ time: data.value, ts: Date.now() });
                    followerTimeRef.current = data.value;
                 } else if (data.method === 'getDuration') {
-                   statusHandlerRef.current?.({ duration: data.value, ts: Date.now() });
+                   if (isMaster && !isMutingReports.current) statusHandlerRef.current?.({ duration: data.value, ts: Date.now() });
                    followerDurationRef.current = data.value;
                 }
              }
@@ -361,6 +425,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
     useEffect(() => {
        if (!remoteCommand) return;
        const { command, value } = remoteCommand;
+       isMutingReports.current = true;
 
        if (command === 'play') pendingPlayCommandRef.current = true;
        if (command === 'pause') pendingPlayCommandRef.current = false;
@@ -370,13 +435,16 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
            followerPausedRef.current = true;
            statusHandlerRef.current?.({ paused: true, ts: Date.now() });
        }
-
        if (payload?.isYouTube) {
           if (command === 'play') {
+             if (value !== undefined) sendIframeCommand('seekTo', [value, true]);
              sendIframeCommand('playVideo');
              // The actual unMute will fire when onStateChange reports playerState = 1
           }
-          if (command === 'pause') sendIframeCommand('pauseVideo');
+          if (command === 'pause') {
+             if (value !== undefined) sendIframeCommand('seekTo', [value, true]);
+             sendIframeCommand('pauseVideo');
+          }
           if (command === 'seek') {
              sendIframeCommand('seekTo', [value, true]);
              if (followerPausedRef.current) setTimeout(() => sendIframeCommand('pauseVideo'), 300);
@@ -386,17 +454,23 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
              sendIframeCommand('unMute');
              sendIframeCommand('setVolume', [value * 100]);
           }
-       } else if (payload?.isVimeo) {
+       }
+
+       if (payload?.isVimeo) {
           if (command === 'play') {
+             if (value !== undefined) sendVimeoCommand('seekTo', value);
              sendVimeoCommand('play');
              if (isMaster && !muteAudio) {
                 sendVimeoCommand('setMuted', false);
                 sendVimeoCommand('setVolume', 1);
              }
           }
-          if (command === 'pause') sendVimeoCommand('pause');
+          if (command === 'pause') {
+             if (value !== undefined) sendVimeoCommand('seekTo', value);
+             sendVimeoCommand('pause');
+          }
           if (command === 'seek') {
-             sendVimeoCommand('setCurrentTime', value);
+             sendVimeoCommand('seekTo', value);
              if (followerPausedRef.current) setTimeout(() => sendVimeoCommand('pause'), 300);
           }
           if (command === 'volume') {
@@ -406,24 +480,29 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           }
        }
 
-         if (videoRef.current) {
-            const v = videoRef.current;
-            if (command === 'play') { 
-                if (isMaster && !muteAudio) { 
-                   v.muted = false; 
-                   v.volume = 1; 
-                } else {
-                   v.muted = true;
-                   v.volume = 0;
-                }
-                v.play().catch(() => {}); 
-            }
-          if (command === 'pause') v.pause();
+       if (videoRef.current && !payload?.isYouTube && !payload?.isVimeo) {
+          const v = videoRef.current;
+          if (command === 'play') { 
+              if (value !== undefined) v.currentTime = value;
+              if (isMaster && !muteAudio) { 
+                 v.muted = false; 
+                 v.volume = 1; 
+              } else {
+                 v.muted = true;
+                 v.volume = 0;
+              }
+              v.play().catch(() => {}); 
+          }
+          if (command === 'pause') {
+              if (value !== undefined) v.currentTime = value;
+              v.pause();
+          }
           if (command === 'seek') v.currentTime = value;
           if (command === 'volume') { if (isMaster) { v.volume = value; v.muted = (value === 0); } }
           if (command === 'loop') v.loop = value;
        }
-       setTimeout(() => { isMutingReports.current = false; }, 300);
+       const timer = setTimeout(() => { isMutingReports.current = false; }, 500);
+       return () => clearTimeout(timer);
     }, [remoteCommand, isMaster, payload?.isYouTube, payload?.isVimeo]);
 
     // 5. Follower Passive Sync (network/projector followers)
@@ -439,24 +518,25 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           const rawDiff = followerTimeRef.current - targetTime;
           const absDiff = Math.abs(rawDiff);
           
-          // Vimeo frequently ignores setPlaybackRate on standard accounts, so we must use a tighter hard-seek threshold for it.
-          if (absDiff > 1.5 || (payload.isVimeo && absDiff > 0.4)) {
-             if (payload.isYouTube) sendIframeCommand('seekTo', [targetTime, true]);
-             else sendVimeoCommand('setCurrentTime', targetTime);
-             followerTimeRef.current = targetTime;
-          } else if (!isPaused) {
-             let rate = 1;
-             if (rawDiff > 0.1) rate = 0.95;
-             else if (rawDiff < -0.1) rate = 1.05;
-             
-             if (payload.isYouTube) sendIframeCommand('setPlaybackRate', [rate]);
-             else sendVimeoCommand('setPlaybackRate', rate);
-          } else if (isPaused) {
-             if (absDiff > 0.1) {
-                if (payload.isYouTube) sendIframeCommand('seekTo', [targetTime, true]);
-                else sendVimeoCommand('setCurrentTime', targetTime);
-                followerTimeRef.current = targetTime;
+          const hardSeekThreshold = 0.4;
+          
+          if (!isPaused && absDiff > hardSeekThreshold) {
+             if (Date.now() - lastSeekTsRef.current >= 3000) {
+                 lastSeekTsRef.current = Date.now();
+                 // Add 0.3s to YouTube seeks to compensate for buffering time, so it lands in sync!
+                 if (payload.isYouTube) sendIframeCommand('seekTo', [targetTime + 0.3, true]);
+                 else sendVimeoCommand('seekTo', targetTime);
+                 followerTimeRef.current = targetTime;
              }
+          } else if (!isPaused) {
+             if (payload.isVimeo) {
+                let rate = 1;
+                if (rawDiff > 0.1) rate = 0.95;
+                else if (rawDiff < -0.1) rate = 1.05;
+                sendVimeoCommand('setPlaybackRate', rate);
+             }
+          } else if (isPaused) {
+             // Removed because seeking while paused causes glitching.
           }
 
           if (isPaused && !followerPausedRef.current) {
@@ -473,7 +553,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
           const v = videoRef.current;
           const rawDiff = v.currentTime - targetTime;
           
-          if (Math.abs(rawDiff) > 0.5) {
+          if (!isPaused && Math.abs(rawDiff) > 0.5) {
              if (v.readyState >= 1) {
                 try { v.currentTime = targetTime; } catch(e){}
              }
@@ -493,10 +573,9 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
        }
     }, [payload?.currentTime, payload?.isPaused, isMaster]);
 
-    const isFollowerWindow = !isMaster;
     const isNetworkViewer = new URLSearchParams(window.location.search).get('network') === 'true';
     const isNetworkAudioVideo = isNetworkViewer && (payload?.mediaType === 'audio' || payload?.mediaType === 'video');
-    const forceStandby = (isFollowerWindow && !payload?.isLive) || isNetworkAudioVideo;
+    const forceStandby = (isProjector && !payload?.isLive) || isNetworkAudioVideo;
     const hasMedia = payload?.activeMediaUrl || (payload?.activeSlide && payload?.activeSlide.length > 0);
     const isStandby = !payload || forceStandby || (!hasMedia && !payload?.isBlackScreen && !payload?.isShowLogo);
 
@@ -589,7 +668,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                       ref={videoRef}
                       key={payload.activeMediaUrl}
                       src={payload.activeMediaUrl}
-                      autoPlay={isMaster ? (payload.itemAutoPlay && payload.isLive) : !payload?.isPaused}
+                      autoPlay={isMaster ? (payload.itemAutoPlay && payload.isLive) : (!payload?.isPaused && payload?.isLive)}
                       muted={isMuted ? true : undefined}
                       loop={payload.itemLoop ?? true}
                       className={`w-full h-full object-cover ${(isMaster && hasInteracted) || !isMaster ? 'pointer-events-none' : ''}`}
@@ -597,7 +676,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                           if (isMaster) {
                              // Ensure local video has audio (browser may have blocked it)
                              if (!muteAudio) { e.target.muted = false; e.target.volume = 1; }
-                             statusHandlerRef.current?.({
+                             if (!isMutingReports.current) statusHandlerRef.current?.({
                                 duration: e.target.duration,
                                 time: e.target.currentTime,
                                 paused: e.target.paused,
@@ -621,7 +700,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                             const now = Date.now();
                             if (!videoRef.current._lastReport || now - videoRef.current._lastReport > 250) {
                                videoRef.current._lastReport = now;
-                               statusHandlerRef.current?.({
+                               if (!isMutingReports.current) statusHandlerRef.current?.({
                                   time: e.target.currentTime,
                                   duration: e.target.duration,
                                   paused: e.target.paused,
@@ -630,8 +709,8 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                             }
                          }
                       }}
-                      onPlay={() => isMaster && statusHandlerRef.current?.({ paused: false, ts: Date.now() })}
-                      onPause={() => isMaster && statusHandlerRef.current?.({ paused: true, ts: Date.now() })}
+                      onPlay={() => isMaster && !isMutingReports.current && statusHandlerRef.current?.({ paused: false, ts: Date.now() })}
+                      onPause={() => isMaster && !isMutingReports.current && statusHandlerRef.current?.({ paused: true, ts: Date.now() })}
                     />
                  )
               )}
@@ -640,7 +719,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                     ref={videoRef}
                     key={payload.activeMediaUrl}
                     src={payload.activeMediaUrl}
-                    autoPlay={isMaster ? payload.itemAutoPlay : !payload?.isPaused}
+                    autoPlay={isMaster ? payload.itemAutoPlay : (!payload?.isPaused && payload?.isLive)}
                     muted={isMuted ? true : undefined}
                     loop={payload.itemLoop ?? false}
                     className="hidden"
@@ -669,7 +748,7 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                           const now = Date.now();
                           if (!videoRef.current._lastReport || now - videoRef.current._lastReport > 250) {
                              videoRef.current._lastReport = now;
-                             statusHandlerRef.current?.({
+                             if (!isMutingReports.current) statusHandlerRef.current?.({
                                 time: e.target.currentTime,
                                 duration: e.target.duration,
                                 paused: e.target.paused,
@@ -678,8 +757,8 @@ export default function OutputScreen({ payload, isMaster = false, isLiveBroadcas
                           }
                        }
                     }}
-                    onPlay={() => isMaster && statusHandlerRef.current?.({ paused: false, ts: Date.now() })}
-                    onPause={() => isMaster && statusHandlerRef.current?.({ paused: true, ts: Date.now() })}
+                    onPlay={() => isMaster && !isMutingReports.current && statusHandlerRef.current?.({ paused: false, ts: Date.now() })}
+                    onPause={() => isMaster && !isMutingReports.current && statusHandlerRef.current?.({ paused: true, ts: Date.now() })}
                   />
               )}
 

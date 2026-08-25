@@ -7,12 +7,20 @@ export default function ProjectorWindow() {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
 
+  const channelRef = useRef(null);
+
   useEffect(() => {
     // Override page title for easier OS task management
     document.title = "Halos Projector Output";
 
     // Initialize high-speed background syncing (Unified Hub)
     const channel = new BroadcastChannel('halos-projector-hub');
+    channelRef.current = channel;
+    
+    // Announce presence so App.jsx knows to yield Master status
+    const interval = setInterval(() => {
+        channelRef.current?.postMessage({ type: 'heartbeat' });
+    }, 1000);
     
     channel.onmessage = (e) => {
        if (!e.data) return;
@@ -35,7 +43,10 @@ export default function ProjectorWindow() {
     // PING Main Controller Window to get initialized payload if we just opened
     channel.postMessage('ping');
 
-    return () => channel.close();
+    return () => {
+        clearInterval(interval);
+        channel.close();
+    };
   }, []);
 
   useEffect(() => {
@@ -61,11 +72,13 @@ export default function ProjectorWindow() {
 
   return (
     <div ref={containerRef} className="w-screen h-screen bg-black overflow-hidden relative">
-        <OutputScreen 
+      <OutputScreen 
           payload={payload} 
-          isMaster={false} 
+          isMaster={payload?.isLive ? true : false} 
+          isProjector={true}
           isLiveBroadcast={true} 
           remoteCommand={remoteCommand}
+          onStatusUpdate={(status) => channelRef.current?.postMessage({ type: 'status', ...status })}
         />
     </div>
   );

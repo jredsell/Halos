@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Peer } from 'peerjs'
-import { ExternalLink, Check, Settings } from 'lucide-react'
+import { ExternalLink, Check, Settings, Heart } from 'lucide-react'
 import FileSystemSetup from './components/FileSystemSetup'
 import { getStoredDirectoryHandle } from './utils/fileSystem'
 import Sidebar from './components/Sidebar'
@@ -11,6 +11,7 @@ import DragDropZone from './components/DragDropZone'
 import ImageArrayViewer from './components/ImageArrayViewer'
 import SongEditor from './components/SongEditor'
 import LiturgyEditor from './components/LiturgyEditor'
+import SupportModal from './components/SupportModal'
 import { useFileSystemWatcher } from './hooks/useFileSystemWatcher'
 import { useSearchIndexer } from './hooks/useSearchIndexer'
 import { useFolderContents } from './hooks/useFolderContents'
@@ -109,14 +110,17 @@ function App() {
   const connectionsRef = useRef([]);
   const livePayloadRef = useRef(null);
   const serviceItemsRef = useRef([]);
+  const projectorTimeoutRef = useRef(null);
   
   // Routing State
   const [isProjectorView, setIsProjectorView] = useState(false);
   const [isNetworkView, setIsNetworkView] = useState(false);
+  const [projectorConnected, setProjectorConnected] = useState(false);
   const [remoteControlRoom, setRemoteControlRoom] = useState(null);
   const [roomId, setRoomId] = useState(null);
   const [networkPayload, setNetworkPayload] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
   
   // App Global Data State
   const [activeTab, setActiveTab] = useState('Service');
@@ -144,7 +148,7 @@ function App() {
   const [logoUrl, setLogoUrl] = useState(null);
   const [livePayload, setLivePayload] = useState(null);
   const [playbackStatus, setPlaybackStatus] = useState({ time: 0, duration: 0, paused: undefined });
-  const [churchName, setChurchName] = useState("HALOS Church Presentation Software");
+  const [churchName, setChurchName] = useState("HALOS - Church Presentation Software");
 
   // System Hooks
   const [systemTrigger, refreshLibrary] = useFileSystemWatcher(libraryHandle);
@@ -303,9 +307,15 @@ function App() {
 
   const [remoteCommand, setRemoteCommand] = useState(null);
   
-  const [liveItem, setLiveItem] = useState(null);
+  const [liveItem, setLiveItemState] = useState(null);
   const liveItemRef = useRef(null);
-  useEffect(() => { liveItemRef.current = liveItem; }, [liveItem]);
+  const setLiveItem = useCallback((val) => {
+     setLiveItemState(prev => {
+        const next = typeof val === 'function' ? val(prev) : val;
+        liveItemRef.current = next;
+        return next;
+     });
+  }, []);
 
   const selectedItemRef = useRef(null);
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
@@ -477,8 +487,21 @@ function App() {
      bc.onmessage = (e) => {
         if (!e.data) return;
         
-        if ((e.data === 'ping' || e.data?.type === 'request-sync') && livePayload) {
+        if (e.data === 'ping') {
+           setProjectorConnected(true);
+           if (projectorTimeoutRef.current) clearTimeout(projectorTimeoutRef.current);
+           projectorTimeoutRef.current = setTimeout(() => setProjectorConnected(false), 2500);
+           if (livePayload) bc.postMessage(livePayload);
+        }
+
+        if (e.data?.type === 'request-sync' && livePayload) {
            bc.postMessage(livePayload);
+        }
+
+        if (e.data?.type === 'heartbeat') {
+           setProjectorConnected(true);
+           if (projectorTimeoutRef.current) clearTimeout(projectorTimeoutRef.current);
+           projectorTimeoutRef.current = setTimeout(() => setProjectorConnected(false), 2500);
         }
         
         if (e.data.type === 'playback') {
@@ -494,15 +517,16 @@ function App() {
 
         if (e.data.type === 'status') {
            // Prevent race conditions: ignore stale status reports from a previous media item
-           if (e.data.itemId && livePayload?.itemId && e.data.itemId !== livePayload.itemId) {
+           if (e.data.itemId && liveItemRef.current?.id && e.data.itemId !== liveItemRef.current.id) {
                return;
            }
-           setPlaybackStatus({ 
-              time: e.data.time, 
-              duration: e.data.duration, 
-              paused: e.data.paused,
+           setPlaybackStatus(prev => ({ 
+              ...prev,
+              ...(e.data.time !== undefined && { time: e.data.time }),
+              ...(e.data.duration !== undefined && { duration: e.data.duration }),
+              ...(e.data.paused !== undefined && { paused: e.data.paused }),
               ts: e.data.ts || Date.now()
-           });
+           }));
            if (e.data.paused !== undefined) setPresentationPaused(e.data.paused);
            if (e.data.slideshowInterval !== undefined) setSlideshowInterval(e.data.slideshowInterval);
         }
@@ -723,6 +747,9 @@ function App() {
       // Decoupled Seleciton: Only update Live Output if selecting from the Service tab
       if (activeTab === 'Service' || forceLive) {
          setRemoteCommand(null);
+         const bcClear = new BroadcastChannel('halos-projector-hub');
+         bcClear.postMessage({ type: 'playback', command: 'clear', ts: Date.now() });
+         bcClear.close();
          setLiveItem(itemToView);
          
          if (itemToView.type === 'song') {
@@ -968,7 +995,7 @@ function App() {
   if (isProjectorView) {
     return (
        <div className="w-screen h-screen bg-black overflow-hidden relative">
-          <OutputScreen payload={livePayload} isMaster={false} remoteCommand={remoteCommand} />
+          <OutputScreen payload={livePayload} isMaster={true} isProjector={true} remoteCommand={remoteCommand} />
        </div>
     );
   }
@@ -1028,10 +1055,15 @@ function App() {
               </div>
               
               <div className="flex items-center gap-4 pb-3">
-                <div className="text-[10px] font-bold px-3 py-1.5 bg-green-950/40 text-green-400 rounded-full border border-green-800/50 tracking-wider uppercase flex items-center gap-2 shadow-inner">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                  Connected
-                </div>
+
+                <button 
+                  onClick={() => setIsSupportOpen(true)}
+                  className="p-1.5 text-rose-500 hover:text-white hover:bg-rose-500/20 rounded-lg transition-colors border border-transparent hover:border-rose-500/30 bg-rose-500/10"
+                  title="Support HALOS"
+                >
+                  <Heart size={18} className="fill-rose-500/20" />
+                </button>
+
                 <button 
                   onClick={() => setIsSettingsOpen(true)}
                   className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors"
@@ -1303,6 +1335,7 @@ function App() {
                  isSyncingMedia={isSyncingMedia}
                  roomId={roomId}
                  musicFiles={musicFiles}
+                 projectorConnected={projectorConnected}
               />
             </div>
           </main>
@@ -1342,6 +1375,8 @@ function App() {
              onCancel={() => setShowOfflineConfirm(false)}
              confirmText="End Broadcast"
           />
+          
+          <SupportModal isOpen={isSupportOpen} onClose={() => setIsSupportOpen(false)} />
       </div>
     </DragDropZone>
   )

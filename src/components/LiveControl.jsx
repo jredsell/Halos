@@ -14,12 +14,12 @@ export default function LiveControl({
     setPresentationPaused = () => {},
     isSyncingMedia = false,
     roomId = null,
-    musicFiles = []
+    musicFiles = [],
+    projectorConnected = false
 }) {
   const [playVolume, setPlayVolume] = useState(1);
   const [scrubTime, setScrubTime] = useState(0);
   
-  // Background Music state
   const [bgmFile, setBgmFile] = useState('');
   const [bgmUrl, setBgmUrl] = useState(null);
   const [bgmPaused, setBgmPaused] = useState(false);
@@ -30,6 +30,8 @@ export default function LiveControl({
   const bgmAudioRef = useRef(null);
   const bgmDraggingRef = useRef(false);
   const bgmPreMuteVolumeRef = useRef(0.5);
+
+  const [localRemoteCommand, setLocalRemoteCommand] = useState(null);
 
   const handleBgmSkip = (direction) => {
      if (!bgmFile || !flatAudioFiles.length) return;
@@ -232,6 +234,7 @@ export default function LiveControl({
     // Reset localStatus when item changes
     useEffect(() => {
        setLocalStatus({ time: 0, duration: 0, paused: isLiveRef.current ? !livePayload?.itemAutoPlay : true });
+       setLocalRemoteCommand(null);
     }, [livePayload?.activeMediaUrl]);
 
     // Force sync when App.jsx pauses the presentation (e.g. window closed)
@@ -286,14 +289,15 @@ export default function LiveControl({
              transformOrigin: 'top left',
              position: 'absolute', top: 0, left: 0
            }}>
-              {/* isMaster={true} → this preview is the local status authority.
-                  muteAudio={false} → this is the ONLY place audio plays out from. */}
+              {/* isMaster determines if this preview is the local status authority.
+                  If projector is connected, the projector is the master authority and this becomes a follower. */}
               <OutputScreen
                 payload={livePayload}
-                isMaster={true}
-                muteAudio={false}
+                isMaster={!projectorConnected || !isLive}
+                muteAudio={true}
+                isProjector={false}
                 onStatusUpdate={handleStatusUpdate}
-                remoteCommand={remoteCommand}
+                remoteCommand={localRemoteCommand || remoteCommand}
                 isLiveBroadcast={true}
               />
            </div>
@@ -303,16 +307,25 @@ export default function LiveControl({
         {(livePayload?.mediaType === 'video' || livePayload?.mediaType === 'audio' || livePayload?.mediaType === 'slide_deck' || livePayload?.mediaType === 'image') && (
            <div className="mt-3 bg-neutral-900/80 border border-neutral-800 rounded-xl p-3 space-y-2.5 shadow-xl">
               <div className="flex items-center justify-between gap-3">
-                 {/* Play / Pause button */}
                  <button
+                   disabled={!isLive}
                    onClick={() => {
                       const nextPaused = !displayPaused;
                       // Update localStatus immediately for instant icon switch
                       setLocalStatus(prev => ({ ...prev, paused: nextPaused }));
+                      
+                      const cmd = { type: 'playback', command: nextPaused ? 'pause' : 'play', ts: Date.now() };
+                      setLocalRemoteCommand(cmd);
+
+                      notifyAppOfStatus({ time: displayTime, paused: nextPaused, duration: displayDuration });
                       broadcastPlayback(nextPaused ? 'pause' : 'play');
                       setPresentationPaused(nextPaused);
                    }}
-                   className="w-9 h-9 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center transition active:scale-95 shadow-lg flex-shrink-0"
+                   className={`w-9 h-9 rounded-full flex items-center justify-center transition shadow-lg flex-shrink-0 ${
+                      !isLive 
+                        ? 'bg-blue-600/50 text-white/50 cursor-not-allowed' 
+                        : 'bg-blue-600 hover:bg-blue-500 text-white active:scale-95'
+                   }`}
                  >
                     {displayPaused
                       ? <Play size={18} fill="currentColor" className="ml-0.5" />
@@ -338,7 +351,14 @@ export default function LiveControl({
                                     source: 'dashboard-ui', isYoutube: livePayload?.isYouTube, isVimeo: livePayload?.isVimeo
                                  });
                                  channel.close();
-                                 if (!displayPaused) setTimeout(() => broadcastPlayback('play'), 50);
+                                 setLocalRemoteCommand({ type: 'playback', command: 'seek', value: scrubTimeRef.current, ts: Date.now() });
+                                 
+                                 if (!displayPaused) {
+                                     setTimeout(() => {
+                                         broadcastPlayback('play');
+                                         setLocalRemoteCommand({ type: 'playback', command: 'play', ts: Date.now() });
+                                     }, 50);
+                                 }
                                  setLocalStatus(prev => ({ ...prev, time: scrubTimeRef.current }));
                                  notifyAppOfStatus({ time: scrubTimeRef.current, paused: displayPaused, duration: displayDuration });
                               }}
@@ -353,7 +373,8 @@ export default function LiveControl({
                                     notifyAppOfStatus({ time, paused: displayPaused, duration: displayDuration });
                                  }
                               }}
-                              className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                              disabled={!isLive}
+                              className={`w-full h-1 bg-neutral-800 rounded-lg appearance-none accent-blue-500 ${!isLive ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                             />
                             {/* Time display */}
                             <div className="flex justify-between text-[10px] font-black font-mono tracking-tighter">
@@ -371,6 +392,7 @@ export default function LiveControl({
 
                          {/* Restart button */}
                          <button
+                            disabled={!isLive}
                             onClick={() => {
                                setScrubTime(0);
                                setLocalStatus(prev => ({ ...prev, time: 0, paused: false }));
@@ -379,7 +401,7 @@ export default function LiveControl({
                                setTimeout(() => broadcastPlayback('play'), 100);
                                notifyAppOfStatus({ time: 0, paused: false, duration: displayDuration });
                             }}
-                            className="p-1.5 text-neutral-500 hover:text-white transition"
+                            className={`p-1.5 transition ${!isLive ? 'text-neutral-600 cursor-not-allowed' : 'text-neutral-500 hover:text-white'}`}
                          >
                             <RotateCcw size={16} />
                          </button>
@@ -449,7 +471,8 @@ export default function LiveControl({
              value={bgmFile} 
              onChange={(e) => {
                  setBgmFile(e.target.value);
-                 if (e.target.value) setBgmPaused(false);
+                 setBgmCurrentTime(0);
+                 if (e.target.value) setBgmPaused(true);
              }}
              className="w-full bg-neutral-950 border border-neutral-800 rounded-lg text-xs py-2 px-2 text-white outline-none focus:border-blue-500 transition mb-2"
           >
@@ -463,40 +486,47 @@ export default function LiveControl({
              <div className="flex flex-col gap-3">
                  <div className="flex items-center gap-2">
                     <button
+                      disabled={!bgmFile}
                       onClick={() => handleBgmSkip(-1)}
-                      className="p-1.5 text-neutral-400 hover:text-white transition"
+                      className="p-1.5 text-neutral-400 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                        <SkipBack size={14} fill="currentColor" />
                     </button>
                     <button
+                      disabled={!bgmFile}
                       onClick={() => setBgmPaused(!bgmPaused)}
-                      className="w-8 h-8 bg-purple-600 hover:bg-purple-500 text-white rounded-full flex items-center justify-center transition active:scale-95 shadow-lg flex-shrink-0"
+                      className="w-8 h-8 bg-purple-600 hover:bg-purple-500 text-white rounded-full flex items-center justify-center transition active:scale-95 shadow-lg flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                       {bgmPaused
+                       {bgmPaused || !bgmFile
                          ? <Play size={14} fill="currentColor" className="ml-0.5" />
                          : <Pause size={14} fill="currentColor" />}
                     </button>
                     <button
+                      disabled={!bgmFile}
                       onClick={() => handleBgmSkip(1)}
-                      className="p-1.5 text-neutral-400 hover:text-white transition"
+                      className="p-1.5 text-neutral-400 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                        <SkipForward size={14} fill="currentColor" />
                     </button>
 
                     <button
+                       disabled={!bgmFile}
                        onClick={() => {
                           if (bgmMode === 'playlist') setBgmMode('single-no-repeat');
                           else if (bgmMode === 'single-no-repeat') setBgmMode('single-repeat');
                           else setBgmMode('playlist');
                        }}
-                       className={`p-1.5 rounded-lg transition ml-2 ${bgmMode !== 'single-no-repeat' ? 'bg-purple-500/20 text-purple-400' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400'}`}
+                       className={`p-1.5 rounded-lg transition ml-2 ${bgmMode !== 'single-no-repeat' ? 'bg-purple-500/20 text-purple-400' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400'} disabled:opacity-50 disabled:cursor-not-allowed`}
                        title={bgmMode === 'playlist' ? "Playlist Mode (Folder)" : bgmMode === 'single-repeat' ? "Repeat Single Track" : "Play Once"}
                     >
                        {bgmMode === 'playlist' ? <Repeat size={14} /> : bgmMode === 'single-repeat' ? <Repeat1 size={14} /> : <ArrowRight size={14} />}
                     </button>
 
-                    <div className="flex-1 flex items-center gap-2 ml-2 border-l border-neutral-800 pl-3">
-                        <button onClick={() => {
+                    <div className="flex-1 flex items-center gap-2 ml-2 border-l border-neutral-800 pl-3 min-w-0">
+                        <button 
+                            disabled={!bgmFile}
+                            className="disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => {
                             if (bgmVolume > 0) {
                                 bgmPreMuteVolumeRef.current = bgmVolume;
                                 setBgmVolume(0);
@@ -510,7 +540,7 @@ export default function LiveControl({
                             type="range" min="0" max="1" step="0.05"
                             value={bgmVolume}
                             onChange={(e) => setBgmVolume(parseFloat(e.target.value))}
-                            className="flex-1 h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                            className="w-full min-w-0 h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
                         />
                     </div>
                  </div>
@@ -518,6 +548,7 @@ export default function LiveControl({
                  {/* Scrubber */}
                  <div className="flex flex-col gap-1 w-full">
                     <input
+                      disabled={!bgmFile}
                       type="range"
                       min="0"
                       max={bgmDuration || 100}
@@ -533,7 +564,7 @@ export default function LiveControl({
                       onChange={(e) => {
                          setBgmCurrentTime(parseFloat(e.target.value));
                       }}
-                      className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                      className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <div className="flex justify-between text-[9px] font-black font-mono tracking-tighter uppercase">
                        <span className={bgmCurrentTime > 0 ? "text-purple-400" : "text-neutral-500"}>
@@ -544,7 +575,7 @@ export default function LiveControl({
                        </span>
                     </div>
                  </div>
-             </div>
+              </div>
           )}
       </div>
       {bgmUrl && (

@@ -70,6 +70,8 @@ export function getYoutubeEmbedUrl(url) {
     modestbranding: '1',
     iv_load_policy: '3',
     controls: '0',
+    cc_load_policy: '3',
+    vq: 'hd1080',
     origin: origin,
     widget_referrer: origin,
     autoplay: '0'

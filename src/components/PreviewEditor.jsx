@@ -121,13 +121,8 @@ export default function PreviewEditor({
           {slides.map((slide, i) => {
             const isResponse = slide.type === 'response';
             const isActiveCard = i === activeIndex;
-                      const textLength = (slide.content || []).join(' ').length;
-                      let sizeCqh = 10;
-                      let sizeCqw = 5;
-                      if (textLength > 350) { sizeCqh = 5; sizeCqw = 2.5; }
-                      else if (textLength > 250) { sizeCqh = 6; sizeCqw = 3; }
-                      else if (textLength > 150) { sizeCqh = 7; sizeCqw = 3.5; }
-                      else if (textLength > 80) { sizeCqh = 8; sizeCqw = 4; }
+                      let sizeCqh = item.type === 'bible' ? 6.5 : 8.5;
+                      let sizeCqw = item.type === 'bible' ? 4.5 : 5;
 
                       return (
               <div key={i} ref={el => tileRefs.current[i] = el} className="flex flex-col gap-2 group">
