@@ -98,6 +98,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
+      <main>
       {/* Hero Section */}
       <section className="relative pt-40 pb-32 px-6 overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -204,6 +205,7 @@ export default function LandingPage() {
               <a 
                 href="https://buy.stripe.com/5kQ14mekn2eBgmbfSi1wY00"
                 target="_blank" rel="noopener noreferrer"
+                aria-label="Select HALOS Supporter Tier for £5 a month"
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition flex items-center justify-center gap-2"
               >
                 Select Tier <ExternalLink size={14} />
@@ -222,6 +224,7 @@ export default function LandingPage() {
               <a 
                 href="https://buy.stripe.com/28E7sK2BF9H3gmb6hI1wY01"
                 target="_blank" rel="noopener noreferrer"
+                aria-label="Select HALOS Partner Tier for £15 a month"
                 className="w-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold uppercase tracking-widest py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20"
               >
                 Select Tier <ExternalLink size={14} />
@@ -236,7 +239,7 @@ export default function LandingPage() {
               <p className="text-xs text-neutral-400 leading-relaxed mb-6 flex-1">
                 Thank you for championing this software! Your generous support ensures HALOS remains a high-quality, free resource for churches everywhere.
               </p>
-              <a href="https://buy.stripe.com/3cI3cub8b1axb1R9tU1wY02" target="_blank" rel="noopener noreferrer" className="w-full bg-amber-600 hover:bg-amber-500 text-amber-950 text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20 flex items-center justify-center gap-2">
+              <a href="https://buy.stripe.com/3cI3cub8b1axb1R9tU1wY02" target="_blank" rel="noopener noreferrer" aria-label="Select HALOS Champion Tier for £30 a month" className="w-full bg-amber-600 hover:bg-amber-500 text-amber-950 text-xs font-bold uppercase tracking-wider py-3 rounded-xl transition-colors shadow-lg shadow-amber-900/20 flex items-center justify-center gap-2">
                 SELECT TIER <ExternalLink size={14} />
               </a>
             </div>
@@ -259,6 +262,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-neutral-800/50 text-center">
