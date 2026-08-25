@@ -26,6 +26,7 @@ export default function Sidebar({
   onLoadService,
   onClearService,
   systemTrigger,
+  onRefresh,
   onDeleteItem,
   isLive,
   liveItem,
@@ -335,7 +336,7 @@ export default function Sidebar({
     if (!libraryHandle || !fileToDelete || !activeTab) return;
     try {
       const dir = await libraryHandle.getDirectoryHandle(activeTab);
-      await dir.removeEntry(fileToDelete.name);
+      await dir.removeEntry(fileToDelete.name, { recursive: fileToDelete.isDirectory ? true : false });
       if (onDeleteItem) onDeleteItem(fileToDelete.name);
       if (onRefresh) onRefresh();
       setFileToDelete(null);

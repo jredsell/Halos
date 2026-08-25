@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Peer } from 'peerjs'
-import { ExternalLink, Check, Settings, Heart } from 'lucide-react'
+import { ExternalLink, Check, Settings, Heart, BookOpen } from 'lucide-react'
 import FileSystemSetup from './components/FileSystemSetup'
 import { getStoredDirectoryHandle } from './utils/fileSystem'
 import Sidebar from './components/Sidebar'
@@ -12,6 +12,7 @@ import ImageArrayViewer from './components/ImageArrayViewer'
 import SongEditor from './components/SongEditor'
 import LiturgyEditor from './components/LiturgyEditor'
 import SupportModal from './components/SupportModal'
+import Logo from './components/Logo'
 import { useFileSystemWatcher } from './hooks/useFileSystemWatcher'
 import { useSearchIndexer } from './hooks/useSearchIndexer'
 import { useFolderContents } from './hooks/useFolderContents'
@@ -1036,10 +1037,7 @@ function App() {
           <header className="h-16 border-b border-neutral-800/80 flex flex-col justify-between px-6 bg-neutral-900/60 backdrop-blur-xl z-20 pt-2 shadow-sm">
             <div className="flex justify-between items-end w-full h-full">
               <div className="flex items-center gap-3 pb-3 w-[356px] shrink-0">
-                  <h1 className="text-xl font-extrabold tracking-widest text-white drop-shadow flex items-baseline gap-3">
-                     HALOS 
-                     <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-widest hidden xl:inline-block truncate">- Church Presentation Software</span>
-                  </h1>
+                  <Logo showText={true} />
               </div>
               
               <div className="flex gap-2 overflow-x-auto no-scrollbar flex-1 justify-center px-4">
@@ -1063,6 +1061,17 @@ function App() {
               </div>
               
               <div className="flex items-center justify-end gap-4 pb-3 w-[336px] shrink-0">
+
+                <button 
+                  onClick={() => {
+                    const base = import.meta.env.BASE_URL || '/';
+                    window.location.href = base.replace(/\/$/, '') + '/docs';
+                  }}
+                  className="p-1.5 text-blue-400 hover:text-white hover:bg-blue-500/20 rounded-lg transition-colors border border-transparent hover:border-blue-500/30 bg-blue-500/10"
+                  title="Documentation"
+                >
+                  <BookOpen size={18} />
+                </button>
 
                 <button 
                   onClick={() => setIsSupportOpen(true)}
