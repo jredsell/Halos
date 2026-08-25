@@ -23,7 +23,7 @@ export async function reResolveMedia(items, library) {
                  fileHandle = await dirHandle.getFileHandle(item.filename);
              }
              const file = await fileHandle.getFile();
-             const images = await convertPdfToImages(file);
+             const images = await convertPdfToImages(file, item.selectedIndices);
              newItems[i] = { ...item, fileHandle, images, url: URL.createObjectURL(file) };
          } else {
              let subDir = item.handle || item.fileHandle;
@@ -32,14 +32,23 @@ export async function reResolveMedia(items, library) {
                  subDir = await dirHandle.getDirectoryHandle(item.filename);
              }
              const imgArray = [];
+             let idx = 0;
              for await (const entry of subDir.values()) {
                 if (entry.kind === 'file' && entry.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-                   const file = await entry.getFile();
-                   imgArray.push({ name: entry.name, url: URL.createObjectURL(file) });
+                   imgArray.push({ name: entry.name, fileHandle: entry, originalIndex: idx++ });
                 }
              }
              imgArray.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-             newItems[i] = { ...item, images: imgArray.map(img => ({ url: img.url })) };
+             
+             const resolvedImages = [];
+             for (let j = 0; j < imgArray.length; j++) {
+                // Keep if there's no filter, OR if this original index is in the selectedIndices
+                if (!item.selectedIndices || item.selectedIndices.includes(imgArray[j].originalIndex)) {
+                   const file = await imgArray[j].fileHandle.getFile();
+                   resolvedImages.push({ url: URL.createObjectURL(file) });
+                }
+             }
+             newItems[i] = { ...item, images: resolvedImages };
          }
       } else if (item.folder !== 'Bible' && !item.isExternal) {
          let fileHandle = item.fileHandle || item.handle;

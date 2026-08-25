@@ -25,7 +25,7 @@ import CentralAudioPlayer from './components/CentralAudioPlayer'
 import RemoteControl from './components/RemoteControl'
 import { addSongPlay } from './services/historyService'
 
-const TABS = ['Service', 'Songs', 'Bible', 'Liturgy', 'Videos', 'Images', 'Music'];
+const TABS = ['Service', 'Songs', 'Images', 'Bible', 'Liturgy', 'Videos', 'Music'];
 
 function FolderExplorer({ folderName, handle, onSelectItem, onBack }) {
     const [files, setFiles] = useState([]);
@@ -729,12 +729,7 @@ function App() {
       
       let itemToView = { ...item };
       
-      // Self-healing: If it's a service item with media, re-resolve URLs from library instantly
-      if (libraryHandle && (item.type === 'video' || item.type === 'image' || item.type === 'slide_deck' || item.type === 'audio')) {
-         const resolved = await reResolveMedia([item], libraryHandle);
-         if (resolved && resolved[0]) itemToView = resolved[0];
-      }
-  
+
        // Always re-parse songs, liturgy and bible so linesPerSlide is respected
        if ((item.type === 'song' || item.type === 'liturgy' || item.type === 'bible') && item.rawText) {
           let parsedSlides;
@@ -801,8 +796,9 @@ function App() {
     let itemToAdd = { ...selectedItem };
 
     // If there's a specific selection in the preview, only add those slides
-    if (selectedIndices.size > 0 && selectedItem.slides) {
-      const selectedSlides = Array.from(selectedIndices).sort((a,b) => a-b).map(idx => selectedItem.slides[idx]);
+    if (selectedIndices.size > 0 && (selectedItem.slides || selectedItem.images)) {
+      if (selectedItem.slides) {
+          const selectedSlides = Array.from(selectedIndices).sort((a,b) => a-b).map(idx => selectedItem.slides[idx]);
       
       let selectionLabel = " (Selected)";
       if (selectedItem.type === 'bible') {
@@ -816,11 +812,20 @@ function App() {
         }
       }
 
-      itemToAdd = {
-        ...selectedItem,
-        title: (selectedItem.title || selectedItem.reference) + selectionLabel,
-        slides: selectedSlides
-      };
+        itemToAdd = {
+          ...selectedItem,
+          title: (selectedItem.title || selectedItem.reference) + selectionLabel,
+          slides: selectedSlides
+        };
+      } else if (selectedItem.images) {
+          const selectedImages = Array.from(selectedIndices).sort((a,b) => a-b).map(idx => selectedItem.images[idx]);
+          itemToAdd = {
+            ...selectedItem,
+            title: selectedItem.title + " (Selected)",
+            images: selectedImages,
+            selectedIndices: Array.from(selectedIndices)
+          };
+      }
       delete itemToAdd.rawText;
       setSelectedIndices(new Set()); // Reset after adding
     }
@@ -1030,8 +1035,11 @@ function App() {
           {/* TOP NAVIGATION BAR */}
           <header className="h-16 border-b border-neutral-800/80 flex flex-col justify-between px-6 bg-neutral-900/60 backdrop-blur-xl z-20 pt-2 shadow-sm">
             <div className="flex justify-between items-end w-full h-full">
-              <div className="flex items-center gap-3 pb-3">
-                  <h1 className="text-xl font-extrabold tracking-widest text-white drop-shadow">HALOS</h1>
+              <div className="flex items-center gap-3 pb-3 w-[356px] shrink-0">
+                  <h1 className="text-xl font-extrabold tracking-widest text-white drop-shadow flex items-baseline gap-3">
+                     HALOS 
+                     <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-widest hidden xl:inline-block truncate">- Church Presentation Software</span>
+                  </h1>
               </div>
               
               <div className="flex gap-2 overflow-x-auto no-scrollbar flex-1 justify-center px-4">
@@ -1054,7 +1062,7 @@ function App() {
                 ))}
               </div>
               
-              <div className="flex items-center gap-4 pb-3">
+              <div className="flex items-center justify-end gap-4 pb-3 w-[336px] shrink-0">
 
                 <button 
                   onClick={() => setIsSupportOpen(true)}
@@ -1168,6 +1176,13 @@ function App() {
                     images={selectedItem.images} 
                     currentIndex={activeSlideIndex} 
                     onSelectIndex={handleSetSlideIndex}
+                    selectedIndices={selectedIndices}
+                    onToggleSelection={(i) => {
+                       const next = new Set(selectedIndices);
+                       if (next.has(i)) next.delete(i);
+                       else next.add(i);
+                       setSelectedIndices(next);
+                    }}
                     item={selectedItem}
                     isServiceItem={serviceItems.some(si => si.id === selectedItem?.id)}
                     onAddSelectedToService={handleAddToService}

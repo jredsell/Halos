@@ -1,6 +1,6 @@
 import { CheckCircle, Circle, Plus, Minus } from 'lucide-react';
 
-export default function ImageArrayViewer({ images, currentIndex, onSelectIndex, item, isServiceItem, onAddSelectedToService, onRemoveSelectedFromService }) {
+export default function ImageArrayViewer({ images, currentIndex, onSelectIndex, item, isServiceItem, onAddSelectedToService, onRemoveSelectedFromService, selectedIndices, onToggleSelection }) {
   if (!images || images.length === 0) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 border border-neutral-800 rounded-2xl">
@@ -37,7 +37,7 @@ export default function ImageArrayViewer({ images, currentIndex, onSelectIndex, 
                 className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95"
               >
                 <Plus size={16} strokeWidth={3} />
-                Add To Service
+                {selectedIndices?.size > 0 ? `Add Selected (${selectedIndices.size})` : 'Add To Service'}
               </button>
             )}
         </div>
@@ -63,13 +63,14 @@ export default function ImageArrayViewer({ images, currentIndex, onSelectIndex, 
 
                   {/* Selection Indicator */}
                   <div 
+                    onClick={(e) => { e.stopPropagation(); onToggleSelection && onToggleSelection(i); }}
                     className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      isActiveCard 
-                        ? 'bg-blue-600 text-white scale-110 shadow-lg' 
-                        : 'bg-black/40 text-white/40 hover:bg-black/60 hover:text-white opacity-0 group-hover:opacity-100'
+                      selectedIndices?.has(i) 
+                        ? 'bg-blue-600 text-white scale-110 shadow-lg border-blue-500' 
+                        : 'border-2 border-neutral-600 text-transparent hover:border-neutral-500'
                     }`}
                   >
-                    {isActiveCard ? <CheckCircle size={20} /> : <Circle size={20} />}
+                    {selectedIndices?.has(i) ? <CheckCircle size={20} /> : <Circle size={20} />}
                   </div>
                 </div>
 

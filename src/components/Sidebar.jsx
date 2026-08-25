@@ -17,7 +17,7 @@ export default function Sidebar({
   linesPerSlide = 2,
   serviceItems, 
   onServiceReorder, 
-  onSelectItem, 
+  onSelectItem,
   onAddToService,
   onNewSong,
   onRemoveServiceItem,
@@ -51,6 +51,7 @@ export default function Sidebar({
   const [videoUrl, setVideoUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [isFetchingTitle, setIsFetchingTitle] = useState(false);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
 
   // Liturgy state
   const [liturgyFiles, setLiturgyFiles] = useState([]);
@@ -179,7 +180,12 @@ export default function Sidebar({
   }, [videoUrl, activeTab]);
 
   const handleGenericFileClick = async (fileObj) => {
-    if (fileObj.isDirectory) {
+    setIsLoadingMedia(true);
+    // Yield to let the loading state render
+    await new Promise(r => setTimeout(r, 50));
+    
+    try {
+        if (fileObj.isDirectory) {
         if (activeTab === 'Images') {
             const imgArray = [];
             for await (const [name, handle] of fileObj.handle.entries()) {
@@ -199,6 +205,7 @@ export default function Sidebar({
                 folder: activeTab,
                 filename: fileObj.name
             });
+            setIsLoadingMedia(false);
             return;
         }
 
@@ -211,6 +218,7 @@ export default function Sidebar({
             filename: fileObj.name,
             _internalFileClick: handleGenericFileClick
         });
+        setIsLoadingMedia(false);
         return;
     }
 
@@ -269,29 +277,14 @@ export default function Sidebar({
     }
 
     onSelectItem(previewItem);
+    setIsLoadingMedia(false);
+  } catch (err) {
+      console.error("Error processing media file:", err);
+      setIsLoadingMedia(false);
+  }
   };
 
-  // Reusable Add Button matching states
-  const AddButton = () => {
-    let addText = 'Add to Service';
-    if (activeTab === 'Bible') {
-      addText = (selectedIndices && selectedIndices.size > 0) ? 'Add Verses to Service' : 'Add Chapter to Service';
-    }
-    
-    return (
-      <button 
-          onClick={triggerAddFeedback} 
-          className={`w-full py-4 text-white font-extrabold tracking-wide uppercase rounded-xl border transition flex items-center justify-center gap-2 mt-auto shadow-lg flex-shrink-0 ${
-             showAdded 
-               ? 'bg-green-600 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]' 
-               : 'bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-600 border-neutral-700/50'
-          }`}
-      >
-          {showAdded ? <Check size={18} className="text-white" /> : <Plus size={18} className="text-blue-400" />} 
-          {showAdded ? 'Added!' : addText}
-      </button>
-    );
-  };
+
 
   const checkInService = (idOrTitle) => serviceItems.some(i => 
     i.id === idOrTitle || 
@@ -412,7 +405,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        <AddButton />
+
 
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 border-t border-neutral-800/50 pt-3 px-1">
           {liturgyFiles.length === 0 && (
@@ -538,7 +531,7 @@ export default function Sidebar({
             })}
           </div>
         </div>
-                <AddButton />
+
 
         <ConfirmModal 
            isOpen={!!bibleToDelete}
@@ -576,7 +569,7 @@ export default function Sidebar({
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors text-neutral-400" />
             </div>
 
-            <AddButton />
+
 
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 mt-1 border-t border-neutral-800/50 pt-4 px-1">
                 {(localQuery.trim() ? searchState.results : (searchState.allItems || [])).map(res => {
@@ -694,21 +687,30 @@ export default function Sidebar({
         </form>
       )}
 
-      <AddButton />
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 mt-2 border-t border-neutral-800/50 pt-4 px-1">
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 mt-2 border-t border-neutral-800/50 pt-4 px-1 relative">
+          {isLoadingMedia && (
+            <div className="absolute inset-0 bg-neutral-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl">
+               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-3"></div>
+               <div className="text-xs font-bold text-blue-400 tracking-widest uppercase">Processing Media...</div>
+            </div>
+          )}
           {folderFiles
-            .filter(f => f.name.toLowerCase().includes(localQuery.toLowerCase()))
-            .map(file => {
-               const isInService = checkInService(file.name);
-               return (
-                 <div 
-                   key={file.name} 
-                   onClick={() => handleGenericFileClick(file)}
-                   className={`p-3 hover:bg-neutral-700/80 rounded-xl cursor-pointer border transition flex items-center justify-between gap-3 ${
-                      isInService ? 'bg-green-950/20 border-green-500/30' : 'bg-neutral-800/40 border-transparent hover:border-neutral-600'
-                   }`}
-                 >
+             .filter(f => f.name.toLowerCase().includes(localQuery.toLowerCase()))
+             .map(file => {
+                const isInService = checkInService(file.name);
+                const isSelected = selectedItem?.id === file.name || selectedItem?.filename === file.name;
+                return (
+                  <div 
+                    key={file.name} 
+                    onClick={() => handleGenericFileClick(file)}
+                    className={`p-3 rounded-xl cursor-pointer border transition flex items-center justify-between gap-3 ${
+                       isSelected ? 'bg-blue-900/40 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.15)] scale-[1.01]' 
+                       : isInService ? 'bg-green-950/20 border-green-500/30' 
+                       : 'bg-neutral-800/40 border-transparent hover:border-neutral-600 hover:bg-neutral-700/80'
+                    }`}
+                  >
                    <div className="flex items-center gap-3 truncate">
                       {file.isDirectory ? <Layers size={16} className="text-blue-400 flex-shrink-0" /> : <FileText size={16} className="text-neutral-500 flex-shrink-0" />}
                       <div className="font-semibold text-xs text-neutral-300 truncate">{file.name}</div>

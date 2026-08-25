@@ -70,7 +70,7 @@ export default function ServiceFlow({
       <div className="flex flex-col h-full mt-2 w-full">
         <Header />
         <div className="text-sm font-medium text-neutral-400 p-6 text-center bg-neutral-900/50 rounded-2xl border border-neutral-800 border-dashed shadow-inner leading-relaxed opacity-60">
-          Your service is currently empty.<br/><br/>Go to Songs, Bible, or Media tabs to search and add items to your flow.
+          Your service is currently empty.<br/><br/>Browse your library tabs above to find and add items, or import an existing service.
         </div>
       </div>
     );
