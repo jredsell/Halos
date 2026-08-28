@@ -18,8 +18,14 @@ export default function FileSystemSetup({ onReady }) {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    // Check if the event fired before React mounted
+    if (window.deferredPWAInstallPrompt) {
+      setDeferredPrompt(window.deferredPWAInstallPrompt);
+    }
+
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
+      window.deferredPWAInstallPrompt = e;
       setDeferredPrompt(e);
     };
 
@@ -47,6 +53,7 @@ export default function FileSystemSetup({ onReady }) {
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === 'accepted') {
       setDeferredPrompt(null);
+      window.deferredPWAInstallPrompt = null;
     }
   };
 
@@ -174,7 +181,7 @@ export default function FileSystemSetup({ onReady }) {
                                 <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5"/> 
                                 <div>
                                     <span className="font-bold text-neutral-300 block mb-0.5">Brave</span>
-                                    <span className="text-neutral-500 text-xs">Disable Shields or enable File System Access.</span>
+                                    <span className="text-neutral-500 text-xs">Enable File System Access API in brave://flags/</span>
                                 </div>
                             </div>
                             <div className="flex items-start gap-2 bg-neutral-900/50 p-3 rounded-lg border border-neutral-800/50">
