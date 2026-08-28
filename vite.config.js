@@ -60,8 +60,9 @@ const netlifyFunctionProxy = (env) => {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const basePath = env.NETLIFY ? '/' : '/halos/';
   return {
-    base: env.NETLIFY ? '/' : '/halos/',
+    base: basePath,
     server: {
       host: true, // Expose to local network automatically
       port: 5178, // Bypassing Redly's cached port
@@ -78,8 +79,8 @@ export default defineConfig(({ mode }) => {
           name: "HALOS - Church Presentation Software",
           short_name: "HALOS",
           description: "Church Presentation Software",
-          start_url: "/app",
-          scope: "/",
+          start_url: `${basePath}app`,
+          scope: basePath,
           display: "standalone",
           background_color: "#0a0a0a",
           theme_color: "#0a0a0a",
@@ -105,7 +106,7 @@ export default defineConfig(({ mode }) => {
           ]
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,json}']
+          globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,json}']
         }
       })
     ],
