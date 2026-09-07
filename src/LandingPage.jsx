@@ -17,15 +17,9 @@ import {
 } from 'lucide-react';
 
 export default function LandingPage() {
-  const navigateToApp = () => {
-    const base = import.meta.env.BASE_URL || '/';
-    window.location.href = base.replace(/\/$/, '') + '/app';
-  };
-
-  const navigateToDocs = () => {
-    const base = import.meta.env.BASE_URL || '/';
-    window.location.href = base.replace(/\/$/, '') + '/docs';
-  };
+  const base = import.meta.env.BASE_URL || '/';
+  const appPath = base.replace(/\/$/, '') + '/app';
+  const docsPath = base.replace(/\/$/, '') + '/docs';
 
   const features = [
     {
@@ -87,13 +81,13 @@ export default function LandingPage() {
           <Logo />
           <div className="flex items-center gap-8 text-sm font-bold tracking-widest uppercase">
             <a href="#" className="text-white">Home</a>
-            <button onClick={navigateToDocs} className="text-neutral-400 hover:text-white transition">Docs</button>
-            <button 
-              onClick={navigateToApp}
+            <a href={docsPath} className="text-neutral-400 hover:text-white transition">Docs</a>
+            <a 
+              href={appPath}
               className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-full transition shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] flex items-center gap-2"
             >
               Launch App <ChevronRight size={16} />
-            </button>
+            </a>
           </div>
         </div>
       </nav>
@@ -116,18 +110,18 @@ export default function LandingPage() {
             Halos is a modern, lightweight presentation software designed to keep your focus on what matters. Seamlessly manage songs, bibles, liturgy, media, and more.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <button 
-              onClick={navigateToApp}
+            <a 
+              href={appPath}
               className="w-full sm:w-auto bg-white text-black hover:bg-neutral-200 px-8 py-4 rounded-full font-black uppercase tracking-widest transition flex items-center justify-center gap-3 text-sm shadow-xl"
             >
               Start Presenting <ArrowRight size={18} />
-            </button>
-            <button 
-              onClick={navigateToDocs}
+            </a>
+            <a 
+              href={docsPath}
               className="w-full sm:w-auto bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white px-8 py-4 rounded-full font-bold uppercase tracking-widest transition text-sm flex items-center justify-center gap-2"
             >
               Read the Docs
-            </button>
+            </a>
           </div>
         </div>
       </section>
@@ -269,8 +263,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <Logo showText={true} className="w-5 h-5" textClassName="text-sm font-black tracking-widest text-neutral-400" />
           <div className="flex gap-6 text-xs font-bold uppercase tracking-widest text-neutral-500">
-            <button onClick={() => window.location.href = base.replace(/\/$/, '') + '/docs'} className="text-neutral-300 hover:text-white transition font-medium">Docs</button>
-            <button onClick={() => window.location.href = base.replace(/\/$/, '') + '/app'} className="text-neutral-300 hover:text-white transition font-medium">Launch App</button>
+            <a href={docsPath} className="text-neutral-300 hover:text-white transition font-medium">Docs</a>
+            <a href={appPath} className="text-neutral-300 hover:text-white transition font-medium">Launch App</a>
           </div>
           <div className="text-xs text-neutral-400">
             © {new Date().getFullYear()} HALOS - Church Presentation Software. All rights reserved.
