@@ -13,6 +13,6 @@ HALOS is a modern, lightweight presentation software designed to keep your focus
 - Local Music: Add your local music collection to play walk-in music, backing tracks, or ambient soundscapes.
 
 ## Important Links
-- [App Application](https://halos-cps.netlify.app/app)
-- [Documentation](https://halos-cps.netlify.app/docs)
-- [Homepage](https://halos-cps.netlify.app)
+- [App Application](https://halos-cps.co.uk/app)
+- [Documentation](https://halos-cps.co.uk/docs)
+- [Homepage](https://halos-cps.co.uk)

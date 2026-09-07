@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://halos-cps.netlify.app/sitemap.xml
+Sitemap: https://halos-cps.co.uk/sitemap.xml

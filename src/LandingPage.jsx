@@ -182,7 +182,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl font-black tracking-widest uppercase mb-4">Support Halos</h2>
             <p className="text-neutral-400 font-medium">
-              We built HALOS to ensure every church, regardless of budget, has access to high-quality presentation software. If you find it valuable and want to help cover basic server costs or fund new features, please consider becoming a supporter!
+              HALOS is FREE!!. We built HALOS to ensure every church has access to high-quality presentation software. But if you find it valuable and want to help cover basic server costs or fund new features, please consider becoming a supporter!
             </p>
           </div>
 
