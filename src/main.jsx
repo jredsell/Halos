@@ -3,6 +3,37 @@ import { createRoot } from 'react-dom/client'
 import LandingPage from './LandingPage.jsx'
 import './index.css'
 
+// Fonts
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/900.css';
+import '@fontsource/roboto/400.css';
+import '@fontsource/roboto/700.css';
+import '@fontsource/roboto/900.css';
+import '@fontsource/open-sans/400.css';
+import '@fontsource/open-sans/700.css';
+import '@fontsource/open-sans/800.css';
+import '@fontsource/montserrat/400.css';
+import '@fontsource/montserrat/700.css';
+import '@fontsource/montserrat/900.css';
+import '@fontsource/lato/400.css';
+import '@fontsource/lato/700.css';
+import '@fontsource/lato/900.css';
+import '@fontsource/merriweather/400.css';
+import '@fontsource/merriweather/700.css';
+import '@fontsource/merriweather/900.css';
+import '@fontsource/lora/400.css';
+import '@fontsource/lora/700.css';
+import '@fontsource/playfair-display/400.css';
+import '@fontsource/playfair-display/700.css';
+import '@fontsource/playfair-display/900.css';
+import '@fontsource/crimson-pro/400.css';
+import '@fontsource/crimson-pro/700.css';
+import '@fontsource/crimson-pro/900.css';
+import '@fontsource/eb-garamond/400.css';
+import '@fontsource/eb-garamond/700.css';
+import '@fontsource/eb-garamond/800.css';
+
 // Lazily load heavy application components so the landing page loads instantly
 const App = lazy(() => import('./App.jsx'));
 const ProjectorWindow = lazy(() => import('./components/ProjectorWindow.jsx'));

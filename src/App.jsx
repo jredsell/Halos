@@ -150,6 +150,7 @@ function App() {
   const [livePayload, setLivePayload] = useState(null);
   const [playbackStatus, setPlaybackStatus] = useState({ time: 0, duration: 0, paused: undefined });
   const [churchName, setChurchName] = useState("HALOS - Church Presentation Software");
+  const [displayFont, setDisplayFont] = useState("Inter");
 
   // System Hooks
   const [systemTrigger, refreshLibrary] = useFileSystemWatcher(libraryHandle);
@@ -184,6 +185,8 @@ function App() {
         // 1. Initial Load from DB (Fast, no permissions)
         const savedChurch = await get('halos_church_name');
         if (savedChurch) setChurchName(savedChurch);
+        const savedFont = await get('halos_display_font');
+        if (savedFont) setDisplayFont(savedFont);
 
 
         const savedService = await get('halos_service_items');
@@ -403,6 +406,7 @@ function App() {
        slideshowInterval: slideshowInterval,
        itemAutoPlay: liveItem?.autoPlay || false,
        churchName: churchName,
+       displayFont: displayFont,
        stickyAudioUrl: stickyAudioItem?.url || null,
        slideIndex: liveSlideIndex,
        itemSlides: liveItem?.slides || null,
@@ -481,7 +485,7 @@ function App() {
     };
 
     broadcast();
-  }, [isLive, isBlackScreen, isShowLogo, isClearText, logoUrl, liveItem, liveSlideIndex, linesPerSlide, playbackStatus, slideshowInterval, syncedMediaUrl, churchName, stickyAudioItem]);
+  }, [isLive, isBlackScreen, isShowLogo, isClearText, logoUrl, liveItem, liveSlideIndex, linesPerSlide, playbackStatus, slideshowInterval, syncedMediaUrl, churchName, displayFont, stickyAudioItem]);
 
   useEffect(() => {
     const bc = new BroadcastChannel('halos-projector-hub');
@@ -583,8 +587,9 @@ function App() {
       if (!isLoaded || isInitialLoad.current) return;
       import('idb-keyval').then(({ set }) => {
          set('halos_church_name', churchName);
+         set('halos_display_font', displayFont);
       });
-  }, [churchName, isLoaded]);
+  }, [churchName, displayFont, isLoaded]);
 
   // Slideshow Autoplay Engine
   useEffect(() => {
@@ -1194,7 +1199,7 @@ function App() {
                                href={selectedItem.url} 
                                target="_blank" 
                                rel="noopener noreferrer" 
-                               className="flex items-center gap-1.5 h-10 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-xl border border-neutral-700/50 transition-all font-bold text-xs uppercase tracking-widest shadow-lg transform hover:-translate-y-0.5 active:translate-y-0"
+                               className="flex items-center gap-1.5 h-10 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:white rounded-xl border border-neutral-700/50 transition-all font-bold text-xs uppercase tracking-widest shadow-lg transform hover:-translate-y-0.5 active:translate-y-0"
                              >
                                <ExternalLink size={14} className="text-blue-400" /> Open Source
                              </a>
@@ -1364,6 +1369,8 @@ function App() {
               roomId={roomId}
               churchName={churchName}
               setChurchName={setChurchName}
+              displayFont={displayFont}
+              setDisplayFont={setDisplayFont}
               onChangeLibrary={() => {
                   if (confirm('Are you sure you want to change the library folder? This will reload the app.')) {
                       import('idb-keyval').then(({ del }) => del('halos_library_handle').then(() => window.location.reload()));

@@ -800,7 +800,11 @@ export default function OutputScreen({ payload, isMaster = false, isProjector = 
     };
 
     return (
-      <div className="w-full h-full bg-black overflow-hidden relative font-sans" onClick={() => setHasInteracted(true)}>
+      <div 
+        className="w-full h-full bg-black overflow-hidden relative font-sans" 
+        onClick={() => setHasInteracted(true)}
+        style={{ fontFamily: payload?.displayFont || 'Inter' }}
+      >
          {renderContent()}
       </div>
     );

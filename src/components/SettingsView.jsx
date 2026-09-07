@@ -2,7 +2,7 @@ import { Share2, Copy, Check, Building2, Music, X, Settings } from 'lucide-react
 import { useState } from 'react';
 import { getSongHistory, exportHistoryCSV } from '../services/historyService';
 
-export default function SettingsView({ roomId, churchName, setChurchName, onChangeLibrary, onClose }) {
+export default function SettingsView({ roomId, churchName, setChurchName, displayFont, setDisplayFont, onChangeLibrary, onClose }) {
   const [ccliFromDate, setCcliFromDate] = useState(() => {
      const d = new Date();
      d.setDate(d.getDate() - 30);
@@ -36,9 +36,22 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
     try {
       const { set } = await import('idb-keyval');
       await set('halos_church_name', churchName);
+      await set('halos_display_font', displayFont);
     } catch(e) {}
   };
-
+  
+  const FONT_OPTIONS = [
+    { value: 'Inter', label: 'Inter (Modern)' },
+    { value: 'Roboto', label: 'Roboto (Clean)' },
+    { value: 'Open Sans', label: 'Open Sans (Friendly)' },
+    { value: 'Montserrat', label: 'Montserrat (Geometric)' },
+    { value: 'Lato', label: 'Lato (Warm)' },
+    { value: 'Merriweather', label: 'Merriweather (Classic Screen)' },
+    { value: 'Lora', label: 'Lora (Elegant Serif)' },
+    { value: 'Playfair Display', label: 'Playfair Display (Premium)' },
+    { value: 'Crimson Pro', label: 'Crimson Pro (Book Style)' },
+    { value: 'EB Garamond', label: 'EB Garamond (Traditional)' }
+  ];
 
 
   return (
@@ -82,7 +95,27 @@ export default function SettingsView({ roomId, churchName, setChurchName, onChan
                 </p>
             </div>
             
-
+            <div className="flex flex-col gap-2 mt-2">
+                <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Global Display Font</label>
+                <select 
+                   value={displayFont || "Inter"}
+                   onChange={(e) => {
+                       setDisplayFont(e.target.value);
+                       import('idb-keyval').then(({ set }) => set('halos_display_font', e.target.value));
+                   }}
+                   style={{ fontFamily: displayFont }}
+                   className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all font-medium"
+                >
+                   {FONT_OPTIONS.map(font => (
+                      <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                         {font.label}
+                      </option>
+                   ))}
+                </select>
+                <p className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
+                   This font will be used globally for all lyrics, liturgy, and bible verses across all connected screens.
+                </p>
+            </div>
           </div>
 
           {/* Network Setup & Sharing */}
